@@ -58,6 +58,13 @@ const COOLDOWN = {
  */
 export const ERROR_RULES = [
   // --- Text-based rules (checked first, order = priority) ---
+  // Deterministic input-too-large: the request body exceeds the provider's hard
+  // input threshold (e.g. Kiro/CodeWhisperer CONTENT_LENGTH_EXCEEDS_THRESHOLD).
+  // Retrying on another account is pointless — every account fails identically —
+  // so fail fast with no fallback and no cooldown instead of burning accounts.
+  { text: "content length exceeds",        noFallback: true },
+  { text: "content_length_exceeds",        noFallback: true },
+  { text: "input is too long",             noFallback: true },
   { text: "no credentials",           cooldownMs: COOLDOWN.long },
   { text: "request not allowed",      cooldownMs: COOLDOWN.short },
   { text: "improperly formed request", cooldownMs: COOLDOWN.long },
