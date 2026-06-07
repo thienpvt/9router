@@ -26,6 +26,35 @@ function normalizeString(value) {
   return String(value).trim();
 }
 
+const HTTP_PROXY_SCHEMES = new Set(["http:", "https:"]);
+const SUPPORTED_PROXY_SCHEMES = "http, https, socks, socks4, socks4a, socks5, socks5h";
+
+/**
+ * Classify a proxy URL into { kind: "socks" | "http" } or { error } with a
+ * helpful message. Undici's ProxyAgent only reports "must start with http/https"
+ * for any non-http scheme, which hides SOCKS support and masks simple typos
+ * (e.g. "sock5s://" instead of "socks5://"), so we detect those up front.
+ */
+function classifyProxyUrl(proxyUrl) {
+  if (isSocksProxyUrl(proxyUrl)) return { kind: "socks" };
+
+  let protocol;
+  try {
+    protocol = new URL(proxyUrl).protocol.toLowerCase();
+  } catch {
+    return {
+      error: `Invalid proxy URL "${proxyUrl}". Expected e.g. socks5://host:port or http://host:port.`,
+    };
+  }
+
+  if (HTTP_PROXY_SCHEMES.has(protocol)) return { kind: "http" };
+
+  const hint = protocol.startsWith("sock") ? ` Did you mean "socks5:"?` : "";
+  return {
+    error: `Unsupported proxy protocol "${protocol}". Supported schemes: ${SUPPORTED_PROXY_SCHEMES}.${hint}`,
+  };
+}
+
 export async function testProxyUrl({ proxyUrl, testUrl, timeoutMs } = {}) {
   const normalizedProxyUrl = normalizeString(proxyUrl);
   if (!normalizedProxyUrl) {
@@ -42,10 +71,16 @@ export async function testProxyUrl({ proxyUrl, testUrl, timeoutMs } = {}) {
   let dispatcher;
 
   try {
+    const classification = classifyProxyUrl(normalizedProxyUrl);
+    if (classification.error) {
+      return { ok: false, status: 400, error: classification.error };
+    }
+
     try {
-      dispatcher = isSocksProxyUrl(normalizedProxyUrl)
-        ? createSocksDispatcher(normalizedProxyUrl)
-        : new ProxyAgent({ uri: normalizedProxyUrl });
+      dispatcher =
+        classification.kind === "socks"
+          ? createSocksDispatcher(normalizedProxyUrl)
+          : new ProxyAgent({ uri: normalizedProxyUrl });
     } catch (err) {
       return {
         ok: false,
