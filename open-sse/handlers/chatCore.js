@@ -19,6 +19,7 @@ import { detectClientTool, isNativePassthrough } from "../utils/clientDetector.j
 import { dedupeTools } from "../utils/toolDeduper.js";
 import { injectCaveman } from "../rtk/caveman.js";
 import { compressMessages, formatRtkLog } from "../rtk/index.js";
+import { truncateKiroPayload } from "../translator/request/kiroTruncate.js";
 
 /**
  * Core chat handler - shared between SSE and Worker
@@ -130,6 +131,20 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   if (cavemanEnabled && cavemanLevel) {
     injectCaveman(translatedBody, finalFormat, cavemanLevel);
     log?.debug?.("CAVEMAN", `${cavemanLevel} | ${finalFormat}`);
+  }
+
+  // Kiro byte-budget truncation: CodeWhisperer rejects oversized request bodies
+  // (CONTENT_LENGTH_EXCEEDS_THRESHOLD) on raw serialized bytes — independent of the
+  // model's token window. Runs LAST (after RTK + caveman) so it only trims what
+  // compression couldn't, dropping oldest history turns to fit the budget.
+  if (translatedBody?.conversationState) {
+    const trunc = truncateKiroPayload(translatedBody);
+    if (trunc.truncated) {
+      log?.warn?.(
+        "KIRO",
+        `payload truncated: dropped ${trunc.droppedTurns} old turns, ${trunc.bytesBefore}B → ${trunc.bytesAfter}B`
+      );
+    }
   }
 
   const executor = getExecutor(provider);
