@@ -2,6 +2,7 @@ import { BaseExecutor } from "./base.js";
 import { PROVIDERS } from "../config/providers.js";
 import { v4 as uuidv4 } from "uuid";
 import { refreshKiroToken } from "../services/tokenRefresh.js";
+import { dumpKiroContentError, isContentLengthError } from "../utils/kiroContentLog.js";
 
 /**
  * KiroExecutor - Executor for Kiro AI (AWS CodeWhisperer)
@@ -58,6 +59,31 @@ export class KiroExecutor extends BaseExecutor {
     const result = await super.execute(args);
     if (result?.response?.ok) {
       result.response = this.transformEventStreamToSSE(result.response, args.model);
+    } else if (result?.response && result.response.status === 400) {
+      // Capture the outbound payload for post-mortem when Kiro rejects the input
+      // as too large. Clone first so the downstream handler can still read the
+      // body for classification. Best-effort; never blocks the error path.
+      try {
+        const errText = await result.response.clone().text();
+        if (isContentLengthError(result.response.status, errText)) {
+          const filePath = dumpKiroContentError({
+            status: result.response.status,
+            errorText: errText,
+            body: result.transformedBody ?? args.body,
+            url: result.url,
+            model: args.model,
+            connectionId: args.credentials?.connectionId,
+          });
+          if (filePath) {
+            args.log?.warn?.(
+              "KIRO",
+              `Input exceeded Kiro content-length threshold — dumped request to ${filePath}`
+            );
+          }
+        }
+      } catch {
+        /* logging must not break the error path */
+      }
     }
     return result;
   }
