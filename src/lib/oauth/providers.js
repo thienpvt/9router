@@ -970,7 +970,45 @@ const PROVIDERS = {
         },
       };
     },
-    mapTokens: (tokens) => {
+    // AWS SSO OIDC (Builder ID / IDC) only returns access/refresh tokens — no
+    // profileArn. The real profile lives in CodeWhisperer and must be fetched
+    // separately with the fresh access token via ListAvailableProfiles, exactly
+    // like the Kiro IDE does. Social/import flows already carry profileArn, so
+    // skip the call when one is present.
+    postExchange: async (tokens) => {
+      if (tokens?.profile_arn) return { profileArn: tokens.profile_arn };
+
+      const region = tokens._region || "us-east-1";
+      const endpoint = `https://codewhisperer.${region}.amazonaws.com`;
+      try {
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-amz-json-1.0",
+            "x-amz-target": "AmazonCodeWhispererService.ListAvailableProfiles",
+            Authorization: `Bearer ${tokens.access_token}`,
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ maxResults: 10 }),
+        });
+
+        if (!response.ok) {
+          const error = await response.text();
+          console.log(`Kiro ListAvailableProfiles failed (${response.status}): ${error}`);
+          return { profileArn: null };
+        }
+
+        const data = await response.json();
+        const profiles = Array.isArray(data?.profiles) ? data.profiles : [];
+        // Prefer a profile in the token's region, else fall back to the first.
+        const match = profiles.find((p) => p?.profileArn?.split(":")[3] === region) || profiles[0];
+        return { profileArn: match?.profileArn || null };
+      } catch (error) {
+        console.log(`Kiro ListAvailableProfiles error: ${error.message}`);
+        return { profileArn: null };
+      }
+    },
+    mapTokens: (tokens, extra) => {
       const email = extractEmailFromAccessToken(tokens.access_token);
       const mapped = {
         accessToken: tokens.access_token,
@@ -978,7 +1016,7 @@ const PROVIDERS = {
         expiresIn: tokens.expires_in,
         email,
         providerSpecificData: {
-          profileArn: tokens?.profile_arn || null,
+          profileArn: extra?.profileArn || tokens?.profile_arn || null,
           clientId: tokens._clientId,
           clientSecret: tokens._clientSecret,
           region: tokens._region || "us-east-1",
