@@ -37,6 +37,33 @@ export class KiroExecutor extends BaseExecutor {
     return headers;
   }
 
+  /**
+   * Auth-aware endpoint ordering.
+   *
+   * API-key Kiro connections store a raw CodeWhisperer credential (validated
+   * against codewhisperer.us-east-1.amazonaws.com via ListAvailableProfiles).
+   * The Kiro IDE gateway (runtime.*.kiro.dev) expects Kiro OIDC/social tokens
+   * and rejects an `tokentype: API_KEY` token with 401/403 — which
+   * BaseExecutor.execute() returns immediately (only 429 / network errors fall
+   * through to the next host). So for api-key auth we must try the *.amazonaws.com
+   * CodeWhisperer hosts FIRST, mirroring the Kiro-Go reference fork which never
+   * routes api-key traffic through kiro.dev. OAuth keeps the default order
+   * (kiro.dev first) since its token is what that gateway accepts.
+   */
+  getOrderedBaseUrls(credentials) {
+    const baseUrls = this.getBaseUrls();
+    const isApiKey = credentials?.providerSpecificData?.authMethod === "api_key";
+    if (!isApiKey) return baseUrls;
+    const amazon = baseUrls.filter((u) => u.includes("amazonaws.com"));
+    const others = baseUrls.filter((u) => !u.includes("amazonaws.com"));
+    return amazon.length > 0 ? [...amazon, ...others] : baseUrls;
+  }
+
+  buildUrl(model, stream, urlIndex = 0, credentials = null) {
+    const baseUrls = this.getOrderedBaseUrls(credentials);
+    return baseUrls[urlIndex] || baseUrls[0] || this.config.baseUrl;
+  }
+
   transformRequest(model, body, stream, credentials) {
     return body;
   }
@@ -48,6 +75,8 @@ export class KiroExecutor extends BaseExecutor {
    * BaseExecutor.execute() walks config.baseUrls (runtime.us-east-1.kiro.dev →
    * codewhisperer → q) advancing to the next host on 429 (shouldRetry) and on
    * network/5xx errors, while tryRetry handles in-place retries per `retry: {429: 2}`.
+   * Note: api-key connections reorder these so the *.amazonaws.com hosts come
+   * first — see getOrderedBaseUrls/buildUrl above.
    * Note: the baseUrls are alternate surfaces of one regional service, so rotation
    * is edge-level failover — it does not grant fresh 429 quota. Per-account 429
    * spreading is handled upstream by account rotation in sse/handlers/chat.js.

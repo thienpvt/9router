@@ -52,6 +52,13 @@ export async function getKiroUsage(accessToken, providerSpecificData, proxyOptio
   const authMethod = providerSpecificData?.authMethod || "builder-id";
   const profileArn = providerSpecificData?.profileArn || resolveDefaultProfileArn(authMethod);
 
+  // API-key Kiro connections authenticate the quota API the same way the chat
+  // executor does: a bearer token plus a `tokentype: API_KEY` header so
+  // CodeWhisperer treats it as a long-lived API key rather than an OIDC token.
+  // Without this header the GetUsageLimits call is rejected (401/403).
+  const isApiKey = authMethod === "api_key";
+  const apiKeyHeaders = isApiKey ? { tokentype: "API_KEY" } : {};
+
   const getUsageParams = new URLSearchParams({
     isEmailRequired: "true",
     origin: "AI_EDITOR",
@@ -71,6 +78,7 @@ export async function getKiroUsage(accessToken, providerSpecificData, proxyOptio
             "Accept": "application/json",
             "x-amz-user-agent": "aws-sdk-js/1.0.0 KiroIDE",
             "user-agent": "aws-sdk-js/1.0.0 KiroIDE",
+            ...apiKeyHeaders,
           },
         },
         proxyOptions
@@ -85,6 +93,7 @@ export async function getKiroUsage(accessToken, providerSpecificData, proxyOptio
           "Content-Type": "application/x-amz-json-1.0",
           "x-amz-target": "AmazonCodeWhispererService.GetUsageLimits",
           "Accept": "application/json",
+          ...apiKeyHeaders,
         },
         body: JSON.stringify({
           origin: "AI_EDITOR",
@@ -106,6 +115,7 @@ export async function getKiroUsage(accessToken, providerSpecificData, proxyOptio
           headers: {
             "Authorization": `Bearer ${accessToken}`,
             "Accept": "application/json",
+            ...apiKeyHeaders,
           },
         }, proxyOptions);
       },

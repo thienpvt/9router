@@ -209,18 +209,15 @@ export default function ProvidersPage() {
     return { connected, error, total, errorCode, errorTime, allDisabled };
   };
 
-  // Toggle all connections for a provider on/off
+  // Toggle all connections for a provider on/off. authType may be a single
+  // string or an array (kiro counts oauth + api_key/apikey together).
   const handleToggleProvider = async (providerId, authType, newActive) => {
     const authTypes = Array.isArray(authType) ? authType : [authType];
-    const providerConns = connections.filter(
-      (c) => c.provider === providerId && authTypes.includes(c.authType),
-    );
+    const matches = (c) =>
+      c.provider === providerId && authTypes.includes(c.authType);
+    const providerConns = connections.filter(matches);
     setConnections((prev) =>
-      prev.map((c) =>
-        c.provider === providerId && authTypes.includes(c.authType)
-          ? { ...c, isActive: newActive }
-          : c,
-      ),
+      prev.map((c) => (matches(c) ? { ...c, isActive: newActive } : c)),
     );
     await Promise.allSettled(
       providerConns.map((c) =>
@@ -467,7 +464,10 @@ export default function ProvidersPage() {
           {freeEntries.map(([key, info]) => {
             // Kiro accepts both OAuth and api-key connections; count/toggle both
             // so the card total matches the provider detail page (#kiro-apikey).
-            const freeAuthTypes = key === "kiro" ? ["oauth", "apikey"] : "oauth";
+            // Kiro's headless api-key flow persists authType "api_key" (underscore),
+            // while generic apikey providers use "apikey" — include both spellings.
+            const freeAuthTypes =
+              key === "kiro" ? ["oauth", "apikey", "api_key"] : "oauth";
             return (
               <ProviderCard
                 key={key}
