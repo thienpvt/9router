@@ -31,11 +31,37 @@ export const MEMORY_CONFIG = {
   proxyDispatchersMaxSize: 20,
 };
 
-// Stream stall timeout: abort if no chunk received within this duration
-export const STREAM_STALL_TIMEOUT_MS = 60 * 1000;
+// Parse a positive integer env override, falling back to a default.
+function envMs(name, def) {
+  const raw = process.env[name];
+  if (raw == null || raw === "") return def;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : def;
+}
+
+// Like envMs but allows an explicit 0 (used as a "disable" sentinel).
+function envMsZeroable(name, def) {
+  const raw = process.env[name];
+  if (raw == null || raw === "") return def;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 0 ? n : def;
+}
+
+// Inter-chunk stall timeout: abort if no chunk received within this duration.
+// Env-tunable so an operator behind a strict gateway can fail fast (e.g.
+// STREAM_STALL_TIMEOUT_MS=45000) and let the client retry instead of hanging.
+export const STREAM_STALL_TIMEOUT_MS = envMs("STREAM_STALL_TIMEOUT_MS", 60 * 1000);
 
 // Fetch connect timeout: abort if upstream doesn't return response headers within this duration
-export const FETCH_CONNECT_TIMEOUT_MS = 60 * 1000;
+export const FETCH_CONNECT_TIMEOUT_MS = envMs("FETCH_CONNECT_TIMEOUT_MS", 60 * 1000);
+
+// TCP keepalive idle (ms) on the outbound upstream socket. Sends keepalive
+// probes once a connection sits idle this long, so an L3/L4 firewall/NAT on a
+// corporate gateway doesn't silently reap a quiet stream (e.g. long reasoning).
+// 0 disables. Env: UPSTREAM_TCP_KEEPALIVE_MS. NOTE: ineffective against an L7
+// filtering proxy (Zscaler/Blue Coat/Palo Alto) which counts application bytes,
+// not TCP segments — there the stream-truncation→error fix is what protects you.
+export const UPSTREAM_TCP_KEEPALIVE_MS = envMsZeroable("UPSTREAM_TCP_KEEPALIVE_MS", 20 * 1000);
 
 // Default token limits
 export const DEFAULT_MAX_TOKENS = 64000;
