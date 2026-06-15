@@ -85,6 +85,19 @@ export function createStreamController({ onDisconnect, onError, log, provider, m
   };
 }
 
+// SSE terminal markers across every provider OUTPUT format. Presence of any of
+// these in the forwarded byte stream means the response reached a clean end, so
+// a transport reset arriving afterwards is harmless (data is already complete).
+// Absence means a reset/stall truncated the stream mid-response.
+//   [DONE]              — OpenAI, Kiro, Gemini/Antigravity translate sentinel
+//   message_stop        — Anthropic / Claude SSE
+//   "finish_reason":"…" — OpenAI chunk with a non-null reason (":null" excluded)
+//   response.completed / response.failed — OpenAI Responses
+//   "done":true         — Ollama
+const TERMINAL_MARKER_RE = /\[DONE\]|message_stop|"finish_reason"\s*:\s*"|response\.completed|response\.failed|"done"\s*:\s*true/;
+// Longest marker is short; a 32-char tail covers any marker split across a chunk boundary.
+const TERMINAL_TAIL_KEEP = 32;
+
 /**
  * Create transform stream with disconnect detection
  * Wraps existing transform stream and adds abort capability.
@@ -93,11 +106,36 @@ export function createStreamController({ onDisconnect, onError, log, provider, m
  * activity), not here — output of the transform stream may be silent
  * for long periods while raw bytes still flow (e.g. Kiro EventStream
  * binary frames buffering, Claude reasoning streams).
+ *
+ * Truncation vs. clean end: a silently-dropped upstream (corporate gateway idle
+ * timeout, ECONNRESET, stall-abort) used to be forwarded as a graceful EOF, so
+ * the client SDK saw a "successful" but empty/partial response and never
+ * retried — work, tokens, and context lost. We now scan forwarded bytes for a
+ * terminal marker and only close gracefully when one was seen (or the client
+ * cancelled, or a structured terminal like Responses' response.failed applies).
+ * A transport failure BEFORE any terminal marker errors the client stream, so
+ * the SDK detects the broken stream and retries instead of accepting nothing.
  */
 export function createDisconnectAwareStream(transformStream, streamController, onAbortTerminal = null) {
   const reader = transformStream.readable.getReader();
   const writer = transformStream.writable.getWriter();
   let terminalEmitted = false;
+  let terminalSeen = false;   // a provider terminal marker crossed the wire
+  let clientCancelled = false; // downstream (client) cancelled the stream
+  let scanTail = "";
+  const scanDecoder = new TextDecoder("utf-8", { fatal: false });
+
+  // Track whether the forwarded bytes already carried a response terminator.
+  const scanForTerminal = (value) => {
+    if (terminalSeen || !value) return;
+    const text = scanTail + scanDecoder.decode(value, { stream: true });
+    if (TERMINAL_MARKER_RE.test(text)) {
+      terminalSeen = true;
+      scanTail = "";
+      return;
+    }
+    scanTail = text.length > TERMINAL_TAIL_KEEP ? text.slice(-TERMINAL_TAIL_KEEP) : text;
+  };
 
   // Emit a synthesized terminal payload (e.g. Responses response.failed + [DONE]) once
   const emitTerminal = (controller) => {
@@ -109,11 +147,30 @@ export function createDisconnectAwareStream(transformStream, streamController, o
     } catch { /* best-effort terminal */ }
   };
 
+  // Decide how to end a stream that did NOT reach a clean reader EOF.
+  // Graceful close when: client cancelled, OR a real terminal marker was already
+  // forwarded (data complete; reset is just post-completion socket teardown).
+  // Otherwise it's a genuine truncation — prefer a structured terminal if one is
+  // available (Responses), else error the stream so the client SDK retries.
+  const endTruncated = (controller, error) => {
+    try {
+      if (clientCancelled || terminalSeen) {
+        emitTerminal(controller);
+        controller.close();
+      } else if (onAbortTerminal) {
+        // Responses passthrough: response.failed + [DONE] is itself a failure signal
+        emitTerminal(controller);
+        controller.close();
+      } else {
+        controller.error(error || new Error("upstream stream truncated before completion"));
+      }
+    } catch { /* already closed or cancelled */ }
+  };
+
   return new ReadableStream({
     async pull(controller) {
       if (!streamController.isConnected()) {
-        emitTerminal(controller);
-        controller.close();
+        endTruncated(controller, new Error("upstream stream stalled before completion"));
         return;
       }
 
@@ -125,42 +182,18 @@ export function createDisconnectAwareStream(transformStream, streamController, o
           controller.close();
           return;
         }
+        scanForTerminal(value);
         controller.enqueue(value);
       } catch (error) {
-        const wasConnected = streamController.isConnected();
         streamController.handleError(error);
         reader.cancel().catch(() => {});
         writer.abort().catch(() => {});
-
-        // Treat network resets / socket hang up / abort as graceful close
-        const msg = error?.message || "";
-        const code = error?.code || error?.cause?.code || "";
-        const isNetworkClose =
-          error.name === "AbortError" ||
-          msg.includes("aborted") ||
-          msg.includes("socket hang up") ||
-          msg.includes("ECONNRESET") ||
-          msg.includes("ETIMEDOUT") ||
-          msg.includes("EPIPE") ||
-          code === "ECONNRESET" ||
-          code === "ETIMEDOUT" ||
-          code === "EPIPE" ||
-          code === "UND_ERR_SOCKET";
-
-        // Graceful close on network/abort, or when a structured terminal is available
-        // (Responses passthrough prefers response.failed + [DONE] over a raw transport error)
-        try {
-          if (!wasConnected || isNetworkClose || onAbortTerminal) {
-            emitTerminal(controller);
-            controller.close();
-          } else {
-            controller.error(error);
-          }
-        } catch (e) { /* already closed or cancelled */ }
+        endTruncated(controller, error);
       }
     },
 
     cancel(reason) {
+      clientCancelled = true;
       streamController.handleDisconnect(reason || "cancelled");
       reader.cancel();
       writer.abort();

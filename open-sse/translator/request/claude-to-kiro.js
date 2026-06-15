@@ -415,7 +415,7 @@ export function claudeToKiroRequest(model, body, stream, credentials) {
   const prefixParts = [];
   if (thinkingEnabled) prefixParts.push(buildThinkingSystemPrefix());
   prefixParts.push(`[Context: Current time is ${timestamp}]`);
-  if (agentic) prefixParts.push(KIRO_AGENTIC_SYSTEM_PROMPT);
+
   finalContent = `${prefixParts.join("\n\n")}\n\n${finalContent}`;
 
   const payload = {

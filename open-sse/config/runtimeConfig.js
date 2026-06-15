@@ -39,6 +39,14 @@ function envMs(name, def) {
   return Number.isFinite(n) && n > 0 ? n : def;
 }
 
+// Like envMs but allows an explicit 0 (used as a "disable" sentinel).
+function envMsZeroable(name, def) {
+  const raw = process.env[name];
+  if (raw == null || raw === "") return def;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 0 ? n : def;
+}
+
 // Inter-chunk stall timeout (once tokens are flowing). Generous headroom so
 // slow reasoning models aren't aborted mid-stream. Env: STREAM_STALL_TIMEOUT_MS.
 export const STREAM_STALL_TIMEOUT_MS = envMs("STREAM_STALL_TIMEOUT_MS", 360 * 1000);
@@ -48,6 +56,14 @@ export const STREAM_FIRST_CHUNK_TIMEOUT_MS = envMs("STREAM_FIRST_CHUNK_TIMEOUT_M
 
 // Fetch connect timeout: abort if upstream doesn't return response headers within this duration
 export const FETCH_CONNECT_TIMEOUT_MS = envMs("FETCH_CONNECT_TIMEOUT_MS", 60 * 1000);
+
+// TCP keepalive idle (ms) on the outbound upstream socket. Sends keepalive
+// probes once a connection sits idle this long, so an L3/L4 firewall/NAT on a
+// corporate gateway doesn't silently reap a quiet stream (e.g. long reasoning).
+// 0 disables. Env: UPSTREAM_TCP_KEEPALIVE_MS. NOTE: ineffective against an L7
+// filtering proxy (Zscaler/Blue Coat/Palo Alto) which counts application bytes,
+// not TCP segments — there the stream-truncation→error fix is what protects you.
+export const UPSTREAM_TCP_KEEPALIVE_MS = envMsZeroable("UPSTREAM_TCP_KEEPALIVE_MS", 20 * 1000);
 
 // Default token limits
 export const DEFAULT_MAX_TOKENS = 64000;

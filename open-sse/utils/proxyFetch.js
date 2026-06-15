@@ -1,9 +1,60 @@
 import { Readable } from "stream";
-import { MEMORY_CONFIG } from "../config/runtimeConfig.js";
+import { MEMORY_CONFIG, UPSTREAM_TCP_KEEPALIVE_MS } from "../config/runtimeConfig.js";
 import { dbg } from "./debugLog.js";
 
 const originalFetch = globalThis.fetch;
 const proxyDispatchers = new Map();
+
+// ─── Upstream TCP keepalive ───────────────────────────────────────────────
+// A corporate gateway / NAT silently reaps a connection that sits idle (e.g.
+// during long model reasoning, when zero bytes flow). Enabling SO_KEEPALIVE on
+// the outbound socket makes the kernel send keepalive probes so an L3/L4 device
+// keeps the flow alive. Ineffective against an L7 filtering proxy that counts
+// application bytes — there the stream-truncation→error fix is the safety net.
+let _keepAliveDispatcher = null;
+let _keepAliveConnect = null;
+
+// Build a connect option that flips SO_KEEPALIVE on each new socket. Shared by
+// the direct dispatcher and the proxy/socks dispatchers. Returns null when
+// keepalive is disabled (UPSTREAM_TCP_KEEPALIVE_MS=0).
+async function getKeepAliveConnect() {
+  if (UPSTREAM_TCP_KEEPALIVE_MS <= 0) return null;
+  if (_keepAliveConnect) return _keepAliveConnect;
+  const { buildConnector } = await import("undici");
+  const baseConnector = buildConnector({});
+  _keepAliveConnect = (opts, cb) => {
+    baseConnector(opts, (err, socket) => {
+      if (err) return cb(err, null);
+      try { socket.setKeepAlive(true, UPSTREAM_TCP_KEEPALIVE_MS); } catch { /* best-effort */ }
+      cb(null, socket);
+    });
+  };
+  return _keepAliveConnect;
+}
+
+// Lazy singleton dispatcher for the direct (no-proxy) path with keepalive on.
+async function getKeepAliveDispatcher() {
+  const connect = await getKeepAliveConnect();
+  if (!connect) return null;
+  if (_keepAliveDispatcher) return _keepAliveDispatcher;
+  const { Agent } = await import("undici");
+  _keepAliveDispatcher = new Agent({ connect });
+  dbg("TLS", `upstream TCP keepalive enabled (${UPSTREAM_TCP_KEEPALIVE_MS}ms idle)`);
+  return _keepAliveDispatcher;
+}
+
+// Direct fetch with keepalive dispatcher injected when the caller didn't already
+// supply one. Falls back to plain originalFetch if keepalive is disabled/unavailable.
+async function keepAliveFetch(url, options) {
+  if (options?.dispatcher) return originalFetch(url, options);
+  try {
+    const dispatcher = await getKeepAliveDispatcher();
+    if (dispatcher) return originalFetch(url, { ...options, dispatcher });
+  } catch (e) {
+    dbg("TLS", `keepalive dispatcher unavailable, plain fetch: ${e.message}`);
+  }
+  return originalFetch(url, options);
+}
 
 // ─── TLS fingerprinting via got-scraping (browser-like JA3) ───────────────
 // Disabled: not in use. Kept commented for future re-enable.
@@ -103,8 +154,8 @@ const MITM_BYPASS_HOSTS = [
   "cloudcode-pa.googleapis.com",
   "daily-cloudcode-pa.googleapis.com",
   "api.individual.githubcopilot.com",
-  "q.us-east-1.amazonaws.com",
-  "codewhisperer.us-east-1.amazonaws.com",
+//  "q.us-east-1.amazonaws.com",
+//  "codewhisperer.us-east-1.amazonaws.com",
   "api2.cursor.sh",
 ];
 const GOOGLE_DNS_SERVERS = ["8.8.8.8", "8.8.4.4"];
@@ -225,13 +276,19 @@ async function getDispatcher(proxyUrl) {
     if (proxyDispatchers.size >= MEMORY_CONFIG.proxyDispatchersMaxSize) {
       proxyDispatchers.delete(proxyDispatchers.keys().next().value);
     }
+    // Enable SO_KEEPALIVE on the proxied socket too (best-effort).
+    const keepAliveConnect = await getKeepAliveConnect();
     // SOCKS proxies need a custom dispatcher — undici's ProxyAgent is HTTP-only.
     if (isSocksProxyUrl(normalized)) {
       const { createSocksDispatcher } = await import("./socksDispatcher.js");
+      // createSocksDispatcher builds its own connect; keepalive on the SOCKS hop
+      // is best-effort via Agent defaults, so pass nothing extra here.
       proxyDispatchers.set(normalized, createSocksDispatcher(normalized));
     } else {
       const { ProxyAgent } = await import("undici");
-      proxyDispatchers.set(normalized, new ProxyAgent({ uri: normalized }));
+      const opts = { uri: normalized };
+      if (keepAliveConnect) opts.connect = keepAliveConnect;
+      proxyDispatchers.set(normalized, new ProxyAgent(opts));
     }
   }
 
@@ -250,6 +307,10 @@ async function createBypassRequest(parsedUrl, realIP, options) {
 
   return new Promise((resolve, reject) => {
     const socket = new net.Socket();
+    // Keep idle connection alive across a gateway/NAT (best-effort).
+    if (UPSTREAM_TCP_KEEPALIVE_MS > 0) {
+      try { socket.setKeepAlive(true, UPSTREAM_TCP_KEEPALIVE_MS); } catch { /* best-effort */ }
+    }
 
     socket.connect(HTTPS_PORT, realIP, () => {
       const reqOptions = {
@@ -354,9 +415,9 @@ export async function proxyAwareFetch(url, options = {}, proxyOptions = null) {
     }
   }
 
-  // got-scraping disabled — use native fetch directly
-  // (Re-enable per-host by wrapping with tryGotScrapingFetch when needed)
-  return originalFetch(url, options);
+  // No proxy — direct fetch with upstream TCP keepalive (best-effort) so an
+  // idle L3/L4 gateway/NAT doesn't silently reap a quiet stream.
+  return keepAliveFetch(url, options);
 }
 
 /**
