@@ -2,7 +2,6 @@ import { BaseExecutor } from "./base.js";
 import { PROVIDERS } from "../config/providers.js";
 import { v4 as uuidv4 } from "uuid";
 import { refreshKiroToken } from "../services/tokenRefresh.js";
-import { dumpKiroContentError, isContentLengthError } from "../utils/kiroContentLog.js";
 
 /**
  * KiroExecutor - Executor for Kiro AI (AWS CodeWhisperer)
@@ -75,8 +74,6 @@ export class KiroExecutor extends BaseExecutor {
    * BaseExecutor.execute() walks config.baseUrls (runtime.us-east-1.kiro.dev →
    * codewhisperer → q) advancing to the next host on 429 (shouldRetry) and on
    * network/5xx errors, while tryRetry handles in-place retries per `retry: {429: 2}`.
-   * Note: api-key connections reorder these so the *.amazonaws.com hosts come
-   * first — see getOrderedBaseUrls/buildUrl above.
    * Note: the baseUrls are alternate surfaces of one regional service, so rotation
    * is edge-level failover — it does not grant fresh 429 quota. Per-account 429
    * spreading is handled upstream by account rotation in sse/handlers/chat.js.
@@ -88,31 +85,6 @@ export class KiroExecutor extends BaseExecutor {
     const result = await super.execute(args);
     if (result?.response?.ok) {
       result.response = this.transformEventStreamToSSE(result.response, args.model);
-    } else if (result?.response && result.response.status === 400) {
-      // Capture the outbound payload for post-mortem when Kiro rejects the input
-      // as too large. Clone first so the downstream handler can still read the
-      // body for classification. Best-effort; never blocks the error path.
-      try {
-        const errText = await result.response.clone().text();
-        if (isContentLengthError(result.response.status, errText)) {
-          const filePath = dumpKiroContentError({
-            status: result.response.status,
-            errorText: errText,
-            body: result.transformedBody ?? args.body,
-            url: result.url,
-            model: args.model,
-            connectionId: args.credentials?.connectionId,
-          });
-          if (filePath) {
-            args.log?.warn?.(
-              "KIRO",
-              `Input exceeded Kiro content-length threshold — dumped request to ${filePath}`
-            );
-          }
-        }
-      } catch {
-        /* logging must not break the error path */
-      }
     }
     return result;
   }
@@ -138,8 +110,6 @@ export class KiroExecutor extends BaseExecutor {
 
     const transformStream = new TransformStream({
       async transform(chunk, controller) {
-             // Track output so we can emit a keepalive if this frame yields no chunk.
-        const enqueueCountBefore = chunkIndex;
         // Append to buffer
         const newBuffer = new Uint8Array(buffer.length + chunk.length);
         newBuffer.set(buffer);
@@ -163,7 +133,7 @@ export class KiroExecutor extends BaseExecutor {
           if (!event) continue;
 
           const eventType = event.headers[":event-type"] || "";
-
+          
           // Track total content length for token estimation
           if (!state.totalContentLength) state.totalContentLength = 0;
           if (!state.contextUsagePercentage) state.contextUsagePercentage = 0;
@@ -172,7 +142,7 @@ export class KiroExecutor extends BaseExecutor {
           if (eventType === "assistantResponseEvent" && event.payload?.content) {
             const content = event.payload.content;
             state.totalContentLength += content.length;
-
+            
             const chunk = {
               id: responseId,
               object: "chat.completion.chunk",
@@ -359,7 +329,7 @@ export class KiroExecutor extends BaseExecutor {
             if (metrics && typeof metrics === 'object') {
               const inputTokens = metrics.inputTokens || 0;
               const outputTokens = metrics.outputTokens || 0;
-
+              
               if (inputTokens > 0 || outputTokens > 0) {
                 state.usage = {
                   prompt_tokens: inputTokens,
@@ -373,27 +343,27 @@ export class KiroExecutor extends BaseExecutor {
           // Emit final chunk only after receiving BOTH meteringEvent AND contextUsageEvent
           if (state.hasMeteringEvent && state.hasContextUsage && !state.finishEmitted) {
             state.finishEmitted = true;
-
+            
             // Estimate tokens if not available from events
             if (!state.usage) {
               // Estimate output tokens from content length
-              const estimatedOutputTokens = state.totalContentLength > 0
+              const estimatedOutputTokens = state.totalContentLength > 0 
                 ? Math.max(1, Math.floor(state.totalContentLength / 4))
                 : 0;
-
+              
               // Estimate input tokens from contextUsagePercentage
               // Kiro models typically have 200k context window
               const estimatedInputTokens = state.contextUsagePercentage > 0
                 ? Math.floor(state.contextUsagePercentage * 200000 / 100)
                 : 0;
-
+              
               state.usage = {
                 prompt_tokens: estimatedInputTokens,
                 completion_tokens: estimatedOutputTokens,
                 total_tokens: estimatedInputTokens + estimatedOutputTokens
               };
             }
-
+            
             const finishChunk = {
               id: responseId,
               object: "chat.completion.chunk",
@@ -405,12 +375,12 @@ export class KiroExecutor extends BaseExecutor {
                 finish_reason: state.hasToolCalls ? "tool_calls" : "stop"
               }]
             };
-
+            
             // Include usage in final chunk if available
             if (state.usage) {
               finishChunk.usage = state.usage;
             }
-
+            
             controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(finishChunk)}\n\n`));
           }
         }
@@ -418,12 +388,6 @@ export class KiroExecutor extends BaseExecutor {
         if (iterations >= maxIterations) {
           console.warn("[Kiro] Max iterations reached in event parsing");
         }
-
-        // No client chunk produced this frame — emit an SSE comment keepalive
-                // so the stall watchdog sees upstream activity (ignored by parser/client).
-                if (chunkIndex === enqueueCountBefore && !state.finishEmitted) {
-                  controller.enqueue(new TextEncoder().encode(": ka\n\n"));
-                }
       },
 
       flush(controller) {

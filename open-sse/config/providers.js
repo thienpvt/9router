@@ -101,6 +101,9 @@ export const PROVIDERS = {
     baseUrl: "https://api3.qoder.sh/algo/api/v2/service/pro/sse/agent_chat_generation",
     format: "openai",
     headers: {},
+    // Reasoning models think long before first byte; raise both timeouts.
+    timeoutMs: 120000,
+    stallTimeoutMs: 120000,
   },
   antigravity: {
     baseUrls: [
@@ -126,7 +129,8 @@ export const PROVIDERS = {
   },
   "vercel-ai-gateway": {
     baseUrl: "https://ai-gateway.vercel.sh/v1/chat/completions",
-    format: "openai"
+    format: "openai",
+    retry: { 429: 2 }
   },
   glm: {
     baseUrl: "https://api.z.ai/api/anthropic/v1/messages",
@@ -206,7 +210,9 @@ export const PROVIDERS = {
       "https://q.us-east-1.amazonaws.com/generateAssistantResponse",
     ],
     format: "kiro",
-    retry: { 429: 2 },
+    // 429 = identity-level throttle; retrying the same identity only spams AWS.
+    // Rotate across the 3 host surfaces once each (shouldRetry) without per-host retries.
+    retry: { 429: 0 },
     headers: {
       "Content-Type": "application/json",
       "Accept": "application/vnd.amazon.eventstream",
@@ -319,7 +325,7 @@ export const PROVIDERS = {
     format: "openai"
   },
   siliconflow: {
-    baseUrl: "https://api.siliconflow.cn/v1/chat/completions",
+    baseUrl: "https://api.siliconflow.com/v1/chat/completions",
     format: "openai"
   },
   hyperbolic: {
@@ -407,6 +413,8 @@ export const PROVIDERS = {
     baseUrl: "https://api.xiaomimimo.com/v1/chat/completions",
     format: "openai"
   },
+  "mimo-free": { baseUrl: "https://api.xiaomimimo.com/api/free-ai/openai/chat", format: "openai", noAuth: true },
+  mmf: { baseUrl: "https://api.xiaomimimo.com/api/free-ai/openai/chat", format: "openai", noAuth: true },
   "xiaomi-tokenplan": {
     baseUrl: "https://token-plan-sgp.xiaomimimo.com/v1/chat/completions",
     format: "openai"
