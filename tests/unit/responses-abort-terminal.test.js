@@ -51,10 +51,14 @@ describe("Responses abort terminal synthesis", () => {
     expect(text).toContain("data: [DONE]");
   });
 
-  it("does not synthesize terminal for non-Responses streams (callback null)", async () => {
+  it("does not synthesize a Responses terminal for non-Responses streams (callback null)", async () => {
+    // A non-Responses stream that truncates before any terminal marker must NOT
+    // fabricate a response.failed/[DONE] (that framing is Responses-only). Under
+    // the truncation fix it surfaces a transport error instead, so the client SDK
+    // retries rather than accepting a silent empty EOF.
     const upstream = new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode("data: hi\n\n"));
+      pull(controller) {
+        if (!this._sent) { this._sent = true; controller.enqueue(new TextEncoder().encode("data: hi\n\n")); return; }
         controller.error(new Error("socket hang up"));
       },
     });
@@ -65,8 +69,15 @@ describe("Responses abort terminal synthesis", () => {
       null
     );
 
-    const text = await readAll(out);
-    expect(text).not.toContain("response.failed");
-    expect(text).not.toContain("[DONE]");
+    let text = "";
+    let errored = false;
+    try {
+      text = await readAll(out);
+    } catch (e) {
+      errored = true;
+      expect(e.message).toContain("socket hang up");
+    }
+    expect(text).not.toContain("response.failed"); // no Responses framing synthesized
+    expect(errored).toBe(true);                     // truncation surfaced as an error
   });
 });
