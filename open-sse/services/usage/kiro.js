@@ -50,14 +50,19 @@ function parseKiroQuotaData(data) {
 
 export async function getKiroUsage(accessToken, providerSpecificData, proxyOptions = null) {
   const authMethod = providerSpecificData?.authMethod || "builder-id";
-  const profileArn = providerSpecificData?.profileArn || resolveDefaultProfileArn(authMethod);
-
   // API-key Kiro connections authenticate the quota API the same way the chat
   // executor does: a bearer token plus a `tokentype: API_KEY` header so
   // CodeWhisperer treats it as a long-lived API key rather than an OIDC token.
   // Without this header the GetUsageLimits call is rejected (401/403).
   const isApiKey = authMethod === "api_key";
   const apiKeyHeaders = isApiKey ? { tokentype: "API_KEY" } : {};
+
+  // For api-key auth, never inject the shared default placeholder profileArn —
+  // CodeWhisperer 403s a request whose profileArn isn't owned by the key's
+  // account. Only send a profileArn actually resolved for this connection.
+  const profileArn = isApiKey
+    ? (providerSpecificData?.profileArn || "")
+    : (providerSpecificData?.profileArn || resolveDefaultProfileArn(authMethod));
 
   const getUsageParams = new URLSearchParams({
     isEmailRequired: "true",
@@ -97,7 +102,7 @@ export async function getKiroUsage(accessToken, providerSpecificData, proxyOptio
         },
         body: JSON.stringify({
           origin: "AI_EDITOR",
-          profileArn,
+          ...(profileArn ? { profileArn } : {}),
           resourceType: "AGENTIC_REQUEST",
         }),
       }, proxyOptions),
@@ -107,7 +112,7 @@ export async function getKiroUsage(accessToken, providerSpecificData, proxyOptio
       run: async () => {
         const params = new URLSearchParams({
           origin: "AI_EDITOR",
-          profileArn,
+          ...(profileArn ? { profileArn } : {}),
           resourceType: "AGENTIC_REQUEST",
         });
         return proxyAwareFetch(`${U("kiro").qHost}${U("kiro").limitsPath}?${params}`, {
