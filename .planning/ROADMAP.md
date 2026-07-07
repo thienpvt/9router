@@ -13,7 +13,7 @@ This milestone delivers lossless, zero-translation routing for Claude-format cli
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Passthrough Transport & Auth** - Claude-format requests resolve targetFormat="claude" and reach ollama /v1/messages (cloud + local) with zero translation; auth scheme confirmed and wired; openai-format fallback preserved
+- [x] **Phase 1: Passthrough Transport & Auth** - Claude-format requests resolve targetFormat="claude" and reach ollama /v1/messages (cloud + local) with zero translation; auth scheme confirmed and wired; openai-format fallback preserved (completed 2026-07-07)
 - [ ] **Phase 2: Thinking & Block Fidelity** - Claude thinking, tool_use, text, and base64 image blocks round-trip losslessly; streaming SSE reconstructs the Anthropic event sequence
 - [ ] **Phase 3: Compatibility & Fallback** - Unsupported fields tolerated, stop_reason and usage flow correctly into the Claude-compat response
 - [ ] **Phase 4: Validation & Tests** - Regression, round-trip, and fallback-guard tests prove the passthrough contract holds
@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Auth header scheme for ollama `/v1/messages` is confirmed (cloud: existing ollama API key — `x-api-key` raw or `Authorization: bearer`, confirmed against docs/probe; local: key not validated) and wired so requests authenticate successfully
   4. A non-Claude (openai-format) request to ollama still routes through the existing `/api/chat` transport unchanged — the openai/ollama-format path remains the fallback when no claude transport matches
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -41,7 +41,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md — Generalize OllamaLocalExecutor.buildUrl for runtimeTransport + Phase 1 contract self-check
+- [x] 01-02-PLAN.md — Generalize OllamaLocalExecutor.buildUrl for runtimeTransport + Phase 1 contract self-check
 
 ### Phase 2: Thinking & Block Fidelity
 
@@ -102,7 +102,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Passthrough Transport & Auth | 1/2 | In Progress|  |
+| 1. Passthrough Transport & Auth | 2/2 | Complete   | 2026-07-07 |
 | 2. Thinking & Block Fidelity | 0/TBD | Not started | - |
 | 3. Compatibility & Fallback | 0/TBD | Not started | - |
 | 4. Validation & Tests | 0/TBD | Not started | - |
