@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Passthrough Transport & Auth** - Claude-format requests resolve targetFormat="claude" and reach ollama /v1/messages (cloud + local) with zero translation; auth scheme confirmed and wired; openai-format fallback preserved (completed 2026-07-07)
 - [x] **Phase 2: Thinking & Block Fidelity** - Claude thinking, tool_use, text, and base64 image blocks round-trip losslessly; streaming SSE reconstructs the Anthropic event sequence (completed 2026-07-07)
 - [x] **Phase 3: Compatibility & Fallback** - Unsupported fields tolerated, stop_reason and usage flow correctly into the Claude-compat response (completed 2026-07-07)
-- [ ] **Phase 4: Validation & Tests** - Regression, round-trip, and fallback-guard tests prove the passthrough contract holds
+- [x] **Phase 4: Validation & Tests** - Regression, round-trip, and fallback-guard tests prove the passthrough contract holds (completed 2026-07-07)
 
 ## Phase Details
 
@@ -91,11 +91,11 @@ Plans:
   2. A live/recorded round-trip test confirms thinking + tool_use blocks survive end-to-end against ollama cloud (or a mock of the `/v1/messages` contract)
   3. A test guards that non-Claude (openai-format) requests to ollama still route through `/api/chat` unchanged
 
-**Plans**: 1 plan
+**Plans**: 1/1 plans complete
 
 Plans:
 
-- [ ] 04-01-PLAN.md — VAL-01 regression (body-identity, no openai hop) + VAL-02 mocked /v1/messages SSE round-trip (thinking + tool_use survive) + VAL-03 fallback guard (/api/chat unchanged)
+- [x] 04-01-PLAN.md — VAL-01 regression (body-identity, no openai hop) + VAL-02 mocked /v1/messages SSE round-trip (thinking + tool_use survive) + VAL-03 fallback guard (/api/chat unchanged)
 
 ## Progress
 
@@ -107,7 +107,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Passthrough Transport & Auth | 2/2 | Complete    | 2026-07-07 |
 | 2. Thinking & Block Fidelity | 2/2 | Complete    | 2026-07-07 |
 | 3. Compatibility & Fallback | 1/1 | Complete    | 2026-07-07 |
-| 4. Validation & Tests | 0/1 | Not started | - |
+| 4. Validation & Tests | 1/1 | Complete   | 2026-07-07 |
 
 ---
 *Roadmap created: 2026-07-07*
