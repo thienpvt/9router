@@ -270,6 +270,18 @@ function applyFormat(fmt, body, cfg, caps) {
 export function applyThinking(targetFormat, model, body, provider = null, intent = undefined) {
   if (!body || typeof body !== "object") return body;
 
+  // [diag:ollama-claude-thinking] temporary log — verify thinking/effort reach ollama under
+  // the claude transport against a live cloud provider. Remove after validation.
+  if (targetFormat === FORMATS.CLAUDE && (provider === "ollama" || provider === "ollama-local")) {
+    console.log("[ollama-claude-thinking]", {
+      provider,
+      short_circuited: provider === "ollama", // ollama-local currently runs the general path (W1)
+      thinking: body.thinking ? { type: body.thinking.type, budget_tokens: body.thinking.budget_tokens } : null,
+      output_config_effort: body.output_config?.effort ?? null,
+      reasoning_effort: body.reasoning_effort ?? null,
+    });
+  }
+
   // ponytail: ceiling = ollama under claude transport. Lift into PROVIDERS[ollama].quirks
   // or a capability flag if a second native-claude provider lands.
   if (provider === "ollama" && targetFormat === FORMATS.CLAUDE) {
