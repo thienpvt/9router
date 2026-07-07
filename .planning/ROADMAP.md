@@ -102,7 +102,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Passthrough Transport & Auth | 2/2 | Complete   | 2026-07-07 |
+| 1. Passthrough Transport & Auth | 2/2 | Complete    | 2026-07-07 |
 | 2. Thinking & Block Fidelity | 0/TBD | Not started | - |
 | 3. Compatibility & Fallback | 0/TBD | Not started | - |
 | 4. Validation & Tests | 0/TBD | Not started | - |

@@ -9,9 +9,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Passthrough Transport
 
-- [ ] **PASS-01**: Ollama Cloud registry advertises a `claude`-format transport at `https://ollama.com/v1/messages` so a Claude-format client request resolves `targetFormat="claude"` and skips translation
-- [ ] **PASS-02**: Ollama Local registry advertises a `claude`-format transport at `http://localhost:11434/v1/messages` (host resolved via existing `resolveOllamaLocalHost`) with the same passthrough behavior
-- [ ] **PASS-03**: The existing `ollama`-format transport (`/api/chat`) remains the fallback when no claude transport matches, so non-Claude clients are unaffected
+- [x] **PASS-01**: Ollama Cloud registry advertises a `claude`-format transport at `https://ollama.com/v1/messages` so a Claude-format client request resolves `targetFormat="claude"` and skips translation
+- [x] **PASS-02**: Ollama Local registry advertises a `claude`-format transport at `http://localhost:11434/v1/messages` (host resolved via existing `resolveOllamaLocalHost`) with the same passthrough behavior
+- [x] **PASS-03**: The existing `ollama`-format transport (`/api/chat`) remains the fallback when no claude transport matches, so non-Claude clients are unaffected
 
 ### Thinking
 
@@ -31,7 +31,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **COMP-01**: Fields ollama ignores (`tool_choice`, `cache_control`, `metadata`) are either stripped before send or tolerated without erroring (verify which; ollama accepts `cache_control`/`anthropic-version` headers silently)
 - [ ] **COMP-02**: `stop_reason` values from ollama (`end_turn`, `max_tokens`, `tool_use`) map correctly to the Claude `stop_reason` field the client expects
 - [ ] **COMP-03**: Usage (`input_tokens`/`output_tokens`) from ollama flows into the gateway's usage tracking under the claude transport
-- [ ] **COMP-04**: Auth header scheme for ollama `/v1/messages` is confirmed and wired (local: API key not validated; cloud: existing ollama API key — likely `x-api-key` raw or `Authorization: bearer`, confirm against docs/probe)
+- [x] **COMP-04**: Auth header scheme for ollama `/v1/messages` is confirmed and wired (local: API key not validated; cloud: existing ollama API key — likely `x-api-key` raw or `Authorization: bearer`, confirm against docs/probe)
 
 ### Validation
 
@@ -67,9 +67,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PASS-01 | Phase 1 | Pending |
-| PASS-02 | Phase 1 | Pending |
-| PASS-03 | Phase 1 | Pending |
+| PASS-01 | Phase 1 | Complete |
+| PASS-02 | Phase 1 | Complete |
+| PASS-03 | Phase 1 | Complete |
 | THINK-01 | Phase 2 | Pending |
 | THINK-02 | Phase 2 | Pending |
 | THINK-03 | Phase 2 | Pending |
@@ -80,12 +80,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COMP-01 | Phase 3 | Pending |
 | COMP-02 | Phase 3 | Pending |
 | COMP-03 | Phase 3 | Pending |
-| COMP-04 | Phase 1 | Pending |
+| COMP-04 | Phase 1 | Complete |
 | VAL-01 | Phase 4 | Pending |
 | VAL-02 | Phase 4 | Pending |
 | VAL-03 | Phase 4 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 17 total
 - Mapped to phases: 17 (100%)
 - Unmapped: 0
