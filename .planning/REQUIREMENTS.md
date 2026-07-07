@@ -67,29 +67,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PASS-01 | — | Pending |
-| PASS-02 | — | Pending |
-| PASS-03 | — | Pending |
-| THINK-01 | — | Pending |
-| THINK-02 | — | Pending |
-| THINK-03 | — | Pending |
-| BLK-01 | — | Pending |
-| BLK-02 | — | Pending |
-| BLK-03 | — | Pending |
-| BLK-04 | — | Pending |
-| COMP-01 | — | Pending |
-| COMP-02 | — | Pending |
-| COMP-03 | — | Pending |
-| COMP-04 | — | Pending |
-| VAL-01 | — | Pending |
-| VAL-02 | — | Pending |
-| VAL-03 | — | Pending |
+| PASS-01 | Phase 1 | Pending |
+| PASS-02 | Phase 1 | Pending |
+| PASS-03 | Phase 1 | Pending |
+| THINK-01 | Phase 2 | Pending |
+| THINK-02 | Phase 2 | Pending |
+| THINK-03 | Phase 2 | Pending |
+| BLK-01 | Phase 2 | Pending |
+| BLK-02 | Phase 2 | Pending |
+| BLK-03 | Phase 2 | Pending |
+| BLK-04 | Phase 2 | Pending |
+| COMP-01 | Phase 3 | Pending |
+| COMP-02 | Phase 3 | Pending |
+| COMP-03 | Phase 3 | Pending |
+| COMP-04 | Phase 1 | Pending |
+| VAL-01 | Phase 4 | Pending |
+| VAL-02 | Phase 4 | Pending |
+| VAL-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17 ⚠️ (filled by roadmap)
+- Mapped to phases: 17 (100%)
+- Unmapped: 0
+
+| Phase | Requirements |
+|-------|--------------|
+| Phase 1 — Passthrough Transport & Auth | PASS-01, PASS-02, PASS-03, COMP-04 (4) |
+| Phase 2 — Thinking & Block Fidelity | THINK-01, THINK-02, THINK-03, BLK-01, BLK-02, BLK-03, BLK-04 (7) |
+| Phase 3 — Compatibility & Fallback | COMP-01, COMP-02, COMP-03 (3) |
+| Phase 4 — Validation & Tests | VAL-01, VAL-02, VAL-03 (3) |
 
 ---
 *Requirements defined: 2026-07-07*
-*Last updated: 2026-07-07 after initial definition*
+*Last updated: 2026-07-07 after roadmap creation (17/17 mapped)*
