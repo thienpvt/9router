@@ -1,3 +1,5 @@
+import { CLAUDE_API_HEADERS } from "../shared.js";
+
 export default {
   id: "ollama",
   priority: 30,
@@ -20,6 +22,15 @@ export default {
     validateUrl: "https://ollama.com/api/tags",
     format: "ollama",
   },
+  // Multi-endpoint: pick the transport matching client sourceFormat to skip translation.
+  transports: [
+    {
+      format: "claude",
+      baseUrl: "https://ollama.com/v1/messages",
+      headers: { ...CLAUDE_API_HEADERS },
+      auth: { combined: true, header: "x-api-key", scheme: "raw" },
+    },
+  ],
   models: [
     { id: "gpt-oss:120b", name: "GPT OSS 120B" },
     { id: "kimi-k2.5", name: "Kimi K2.5" },
