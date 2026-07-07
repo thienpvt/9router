@@ -119,6 +119,88 @@ describe("Phase 2: Block fidelity for ollama claude passthrough", () => {
     expect(image.source.data).toBe("iVBORw0KGgo=");
   });
 
+  // WR-04: BLK-03 contract covers IMAGE blocks only. The hasValidContent fix in
+  // prepareClaudeRequest (claude.js:13-25) also recognizes DOCUMENT blocks —
+  // verify a document-bearing user message survives the empty-message filter
+  // (would be dropped without the DOCUMENT branch in hasValidContent).
+  it("Contract BLK-03b: document content blocks pass through hasValidContent filter", () => {
+    const model = "claude-sonnet-4-5";
+    const body = {
+      model,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "document",
+              source: {
+                type: "base64",
+                media_type: "application/pdf",
+                data: "JVBERi0=",
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = translateRequest(
+      FORMATS.CLAUDE,
+      FORMATS.CLAUDE,
+      model,
+      body,
+      false,
+      null,
+      "ollama"
+    );
+
+    const user = result.messages.find((m) => m.role === "user");
+    expect(user).toBeDefined();  // would be filtered out without the DOCUMENT fix
+    const doc = user.content.find((b) => b.type === "document");
+    expect(doc).toBeDefined();
+    expect(doc.source.type).toBe("base64");
+    expect(doc.source.media_type).toBe("application/pdf");
+    expect(doc.source.data).toBe("JVBERi0=");
+  });
+
+  it("Contract BLK-03c: mixed text + document content blocks pass through hasValidContent filter", () => {
+    const model = "claude-sonnet-4-5";
+    const body = {
+      model,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: "summarize this pdf" },
+            {
+              type: "document",
+              source: {
+                type: "base64",
+                media_type: "application/pdf",
+                data: "JVBERi0xLjQK",
+              },
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = translateRequest(
+      FORMATS.CLAUDE,
+      FORMATS.CLAUDE,
+      model,
+      body,
+      false,
+      null,
+      "ollama"
+    );
+
+    const user = result.messages.find((m) => m.role === "user");
+    expect(user).toBeDefined();
+    expect(user.content.some((b) => b.type === "text")).toBe(true);
+    expect(user.content.some((b) => b.type === "document")).toBe(true);
+  });
+
   it("Contract BLK-04: same-format response passthrough returns [chunk] unchanged", () => {
     const chunk = { type: "message_start", message: { id: "msg_1" } };
     const result = translateResponse(FORMATS.CLAUDE, FORMATS.CLAUDE, chunk, {});
