@@ -18,12 +18,17 @@ Claude Code clients get lossless, zero-translation access to Ollama (cloud + loc
 - ✓ GLM claude-format passthrough transport (`glm.js` `transports[]` claude entry) — the pattern this milestone copies
 - ✓ Ollama Cloud + Local advertise a claude-format transport at `/v1/messages` so `resolveTransport("ollama","claude")` skips translation — Phase 1 (PASS-01, PASS-02, PASS-03, COMP-04 cloud wiring)
 - ✓ `OllamaLocalExecutor.buildUrl` honors `runtimeTransport` (host-substituted `/v1/messages`, `/api/chat` fallback preserved) — Phase 1
+- ✓ Claude `thinking` blocks + `output_config.effort` pass through natively (applyThinking no-op on the ollama claude path); providerThinking injection normalized to Claude shape — Phase 2 (THINK-01, THINK-02, THINK-03)
+- ✓ `tool_use`/`tool_result`/`text`/`system`/base64 `image`/`document` content blocks round-trip lossless through the same-format passthrough; `hasValidContent` now recognizes image/document blocks — Phase 2 (BLK-01, BLK-02, BLK-03)
+- ✓ ollama's native SSE event sequence forwarded unchanged (same-format response passthrough) — Phase 2 mechanism (BLK-04; full round-trip → Phase 4 VAL-02)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
 - [ ] Ollama cloud auth header scheme confirmed against live `/v1/messages` (wired `x-api-key` raw by convention — live probe deferred to Phase 4 VAL-02)
+- [ ] Fields ollama ignores (tool_choice, cache_control, metadata) stripped or tolerated without erroring
+- [ ] ollama `stop_reason` + usage flow correctly into the Claude-compat response
 - [ ] Claude thinking blocks + `output_config.effort` pass through natively and surface via ollama's `thinking_delta` SSE
 - [ ] tool_use / tool_result / text / image(base64) content blocks round-trip lossless through passthrough
 - [ ] Unsupported fields (tool_choice, cache_control, metadata, document/citations/URL-image blocks) stripped or ignored without erroring
@@ -59,7 +64,7 @@ Claude Code clients get lossless, zero-translation access to Ollama (cloud + loc
 | Passthrough over custom translator | Ollama ships native `/v1/messages`; passthrough is lossless and ~10 lines vs a hand-rolled fragile translator | ✓ Phase 1 — both registries advertise `transports[]` claude entry; no translator written |
 | Branch off master, planning from consolidated | Keep milestone isolated from consolidated's in-progress proxy/socks5 work; reuse mapped codebase docs | ✓ Phase 1 — milestone branch intact, planning layered cleanly |
 | Cover cloud + local in one milestone | Both share `format:"ollama"` and both expose `/v1/messages`; one transport pattern serves both | ✓ Phase 1 — same `transports[]` shape on both; `OllamaLocalExecutor.buildUrl` generalized once for the host-substituted local path |
-| Full thinking passthrough, no per-model `thinkingFormat` | Claude body carries `thinking`/`output_config.effort` verbatim; ollama accepts `thinking` blocks + emits `thinking_delta` | Pending — Phase 2 domain |
+| Full thinking passthrough, no per-model `thinkingFormat` | Claude body carries `thinking`/`output_config.effort` verbatim; ollama accepts `thinking` blocks + emits `thinking_delta` | ✓ Phase 2 — applyThinking no-op on ollama claude path; stray providerThinking reasoning_effort normalized to output_config.effort (WR-01) |
 | Local-host substitution over verbatim `rt.baseUrl` (PATTERNS.md Option 2) | Honors user-configured providerSpecificData.baseUrl on the claude path, matching the existing `/api/chat` fallback contract | ✓ Phase 1 — `buildUrl` try/catch wraps `new URL`, appends `urlSuffix`, preserves query (WR-01/02/03 hardening) |
 
 ## Evolution
@@ -80,4 +85,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-07 after Phase 1 (Passthrough Transport & Auth) complete*
+*Last updated: 2026-07-07 after Phase 2 (Thinking & Block Fidelity) complete*
