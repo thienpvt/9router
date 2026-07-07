@@ -91,11 +91,11 @@ Plans:
   2. A live/recorded round-trip test confirms thinking + tool_use blocks survive end-to-end against ollama cloud (or a mock of the `/v1/messages` contract)
   3. A test guards that non-Claude (openai-format) requests to ollama still route through `/api/chat` unchanged
 
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
 
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — VAL-01 regression (body-identity, no openai hop) + VAL-02 mocked /v1/messages SSE round-trip (thinking + tool_use survive) + VAL-03 fallback guard (/api/chat unchanged)
 
 ## Progress
 
@@ -107,7 +107,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 1. Passthrough Transport & Auth | 2/2 | Complete    | 2026-07-07 |
 | 2. Thinking & Block Fidelity | 2/2 | Complete    | 2026-07-07 |
 | 3. Compatibility & Fallback | 1/1 | Complete    | 2026-07-07 |
-| 4. Validation & Tests | 0/TBD | Not started | - |
+| 4. Validation & Tests | 0/1 | Not started | - |
 
 ---
 *Roadmap created: 2026-07-07*
