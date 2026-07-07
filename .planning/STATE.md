@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: Claude→Ollama Passthrough (Anthropic-compat endpoint)
 current_phase: 04
-status: executing
-stopped_at: Phase 03 complete, ready to discuss Phase 4
+status: complete
+stopped_at: Milestone v1.0 — all 4 phases complete, ready for audit
 last_updated: "2026-07-07T17:47:22.029Z"
-last_activity: 2026-07-07
-last_activity_desc: Phase 04 complete
+last_activity: 2026-07-08
+last_activity_desc: Phase 04 complete — milestone v1.0 phases done
 progress:
   total_phases: 4
   completed_phases: 4
@@ -24,16 +24,16 @@ current_phase_name: validation-tests
 See: .planning/PROJECT.md (updated 2026-07-07)
 
 **Core value:** Claude Code clients get lossless, zero-translation access to Ollama (cloud + local) through Ollama's native Anthropic-compatible `/v1/messages` endpoint — no lossy claude→openai→ollama double-hop.
-**Current focus:** Phase 04 — validation-tests
+**Current focus:** Milestone v1.0 complete — audit → complete-milestone → cleanup
 
 ## Current Position
 
-Phase: 04
-Plan: Not started
-Status: Executing Phase 04
-Last activity: 2026-07-07 — Phase 04 complete
+Phase: 4 of 4 (Validation & Tests) — COMPLETE
+Plan: 1/1 done
+Status: Milestone complete (4/4 phases)
+Last activity: 2026-07-08 — Phase 04 complete, milestone v1.0 phases done
 
-Progress: [██████████████████░░] 75% (3/4 phases)
+Progress: [████████████████████] 100% (4/4 phases)
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Recent decisions affecting current work:
 - Full thinking passthrough, no per-model thinkingFormat — ✓ Phase 2 (applyThinking no-op on ollama claude path; stray providerThinking reasoning_effort normalized to output_config.effort per WR-01)
 - hasValidContent recognizes image/document blocks (BLK-03 fix) — ✓ Phase 2 (image/doc-only user messages no longer silently dropped by prepareClaudeRequest)
 - Tolerate-don't-strip ignored fields + no stop_reason normalizer + Claude-shape usage extraction — ✓ Phase 3 (existing same-format passthrough + extractUsage already deliver COMP-01/02/03; no source change needed, tests lock the contract)
+- VAL-02 mocked (not live) round-trip — ✓ Phase 4 (suite must pass green on plain checkout; live `*.real.test.js` out of scope)
 
 ### Pending Todos
 
@@ -79,7 +80,7 @@ None yet.
 
 ### Blockers/Concerns
 
-- COMP-04 cloud auth scheme: wired `x-api-key` raw by convention (matching GLM); live auth-success probe against `/v1/messages` deferred to Phase 4 VAL-02. Not a Phase 1 blocker — code path verified by inspection.
+- COMP-04 cloud auth scheme: wired `x-api-key` raw by convention (matching GLM); code path verified by inspection across Phases 1-4. Remaining: live auth-success + full SSE round-trip confirmation against ollama cloud is a `*.real.test.js` (under tests/translator/real/) skipped without credentials — the Phase 4 mock covers the contract. Not a blocker for the committed suite.
 
 ## Deferred Items
 
@@ -92,6 +93,6 @@ Items acknowledged and carried forward (v2 requirements, not v1 scope):
 
 ## Session Continuity
 
-Last session: 2026-07-07
-Stopped at: Phase 03 complete, ready to discuss Phase 4
+Last session: 2026-07-08
+Stopped at: Milestone v1.0 — all 4 phases complete, ready for audit
 Resume file: None

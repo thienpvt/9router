@@ -23,13 +23,13 @@ Claude Code clients get lossless, zero-translation access to Ollama (cloud + loc
 - ✓ ollama's native SSE event sequence forwarded unchanged (same-format response passthrough) — Phase 2 mechanism (BLK-04; full round-trip → Phase 4 VAL-02)
 - ✓ Fields ollama ignores (tool_choice/cache_control/metadata) tolerated without erroring under the claude transport (sent as-is or rewritten, not stripped) — Phase 3 (COMP-01)
 - ✓ ollama `stop_reason` (end_turn/max_tokens/tool_use) flows to the client unchanged via same-format response passthrough; `usage` (input_tokens/output_tokens + cache_read/cache_creation) captured by the gateway's Claude-shape-aware extraction; native ollama NDJSON usage guarded for the non-Claude fallback path — Phase 3 (COMP-02, COMP-03)
+- ✓ Regression + round-trip + fallback-guard suite locks the passthrough contract (VAL-01 body-identity via structuredClone snapshot, VAL-02 mocked /v1/messages SSE round-trip with ping/error events, VAL-03 full routing-chain guard) — Phase 4 (VAL-01, VAL-02, VAL-03)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
-- [ ] Ollama cloud auth header scheme confirmed against live `/v1/messages` (wired `x-api-key` raw by convention — live probe deferred to Phase 4 VAL-02)
-- [ ] Regression + round-trip + fallback-guard tests lock the passthrough contract (VAL-01/02/03)
+- [ ] Ollama cloud auth header scheme confirmed against live `/v1/messages` (wired `x-api-key` raw by convention; live round-trip confirmation remains a `*.real.test.js` under tests/translator/real/ skipped without credentials — the Phase 4 mock covers the contract)
 - [ ] Claude thinking blocks + `output_config.effort` pass through natively and surface via ollama's `thinking_delta` SSE
 - [ ] tool_use / tool_result / text / image(base64) content blocks round-trip lossless through passthrough
 - [ ] Unsupported fields (tool_choice, cache_control, metadata, document/citations/URL-image blocks) stripped or ignored without erroring
@@ -86,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-07 after Phase 3 (Compatibility & Fallback) complete*
+*Last updated: 2026-07-08 after Phase 4 (Validation & Tests) complete — milestone v1.0 phases 1-4 done*
