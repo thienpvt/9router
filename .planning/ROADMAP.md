@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Passthrough Transport & Auth** - Claude-format requests resolve targetFormat="claude" and reach ollama /v1/messages (cloud + local) with zero translation; auth scheme confirmed and wired; openai-format fallback preserved (completed 2026-07-07)
 - [x] **Phase 2: Thinking & Block Fidelity** - Claude thinking, tool_use, text, and base64 image blocks round-trip losslessly; streaming SSE reconstructs the Anthropic event sequence (completed 2026-07-07)
-- [ ] **Phase 3: Compatibility & Fallback** - Unsupported fields tolerated, stop_reason and usage flow correctly into the Claude-compat response
+- [x] **Phase 3: Compatibility & Fallback** - Unsupported fields tolerated, stop_reason and usage flow correctly into the Claude-compat response (completed 2026-07-07)
 - [ ] **Phase 4: Validation & Tests** - Regression, round-trip, and fallback-guard tests prove the passthrough contract holds
 
 ## Phase Details
@@ -74,11 +74,11 @@ Plans:
   2. `stop_reason` values from ollama (`end_turn`, `max_tokens`, `tool_use`) map correctly to the Claude `stop_reason` field the client expects
   3. Usage (`input_tokens`/`output_tokens`) from ollama flows into the gateway's usage tracking under the claude transport
 
-**Plans**: 1/1 plan planned
+**Plans**: 1/1 plans complete
 
 Plans:
 
-- [ ] 03-01-PLAN.md — ollama-claude compat self-check (COMP-01 field tolerance, COMP-02 stop_reason passthrough, COMP-03 usage extraction, fallback guard)
+- [x] 03-01-PLAN.md — ollama-claude compat self-check (COMP-01 field tolerance, COMP-02 stop_reason passthrough, COMP-03 usage extraction, fallback guard)
 
 ### Phase 4: Validation & Tests
 
@@ -106,7 +106,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Passthrough Transport & Auth | 2/2 | Complete    | 2026-07-07 |
 | 2. Thinking & Block Fidelity | 2/2 | Complete    | 2026-07-07 |
-| 3. Compatibility & Fallback | 0/1 | Not started | - |
+| 3. Compatibility & Fallback | 1/1 | Complete   | 2026-07-07 |
 | 4. Validation & Tests | 0/TBD | Not started | - |
 
 ---
