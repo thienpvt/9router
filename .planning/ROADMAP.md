@@ -55,11 +55,13 @@ Plans:
   3. `tool_use` and `tool_result` content blocks round-trip losslessly (ids, names, JSON input preserved) through the claude passthrough
   4. `text` blocks and `system` (string or array) pass through unchanged; base64 `image` blocks pass through to ollama (URL images out of scope); streaming reconstructs the Anthropic SSE event sequence (`message_start` → `content_block_*` → `message_delta` → `message_stop`) without reordering or dropped events
 
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
+**Wave 1** (parallel — no file overlap)
 
-- [ ] 02-01: TBD
+- [ ] 02-01-PLAN.md — applyThinking ollama-claude short-circuit (THINK-01/02/03) + thinking passthrough self-check
+- [ ] 02-02-PLAN.md — block fidelity verification self-check (BLK-01/02/03/04: tool_use/tool_result/text/system/image + SSE passthrough)
 
 ### Phase 3: Compatibility & Fallback
 
@@ -103,7 +105,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Passthrough Transport & Auth | 2/2 | Complete    | 2026-07-07 |
-| 2. Thinking & Block Fidelity | 0/TBD | Not started | - |
+| 2. Thinking & Block Fidelity | 0/2 | Not started | - |
 | 3. Compatibility & Fallback | 0/TBD | Not started | - |
 | 4. Validation & Tests | 0/TBD | Not started | - |
 
