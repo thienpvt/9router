@@ -15,16 +15,16 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Thinking
 
-- [ ] **THINK-01**: Claude `thinking` content blocks in assistant messages pass through to ollama `/v1/messages` verbatim and the gateway surfaces ollama's `thinking_delta` SSE as Claude thinking blocks back to the client
-- [ ] **THINK-02**: Claude `output_config.effort` (and the legacy `thinking` request field) reach ollama unchanged under the claude transport — `applyThinking` does not rewrite them into a vendor dialect for the ollama claude path
-- [ ] **THINK-03**: `providerThinking` on/off/level injection (`chatCore.js:73-83`) continues to function for ollama under the claude transport
+- [x] **THINK-01**: Claude `thinking` content blocks in assistant messages pass through to ollama `/v1/messages` verbatim and the gateway surfaces ollama's `thinking_delta` SSE as Claude thinking blocks back to the client
+- [x] **THINK-02**: Claude `output_config.effort` (and the legacy `thinking` request field) reach ollama unchanged under the claude transport — `applyThinking` does not rewrite them into a vendor dialect for the ollama claude path
+- [x] **THINK-03**: `providerThinking` on/off/level injection (`chatCore.js:73-83`) continues to function for ollama under the claude transport
 
 ### Block Fidelity
 
-- [ ] **BLK-01**: `tool_use` and `tool_result` content blocks round-trip losslessly (ids, names, JSON input preserved) through the claude passthrough
-- [ ] **BLK-02**: `text` content blocks and `system` (string or array) pass through unchanged
-- [ ] **BLK-03**: Base64 `image` content blocks pass through to ollama (ollama supports base64 only — URL images are out of scope)
-- [ ] **BLK-04**: Streaming response reconstructs the Anthropic SSE event sequence (`message_start` → `content_block_*` → `message_delta` → `message_stop`) into the client-facing Claude stream without reordering or dropped events
+- [x] **BLK-01**: `tool_use` and `tool_result` content blocks round-trip losslessly (ids, names, JSON input preserved) through the claude passthrough
+- [x] **BLK-02**: `text` content blocks and `system` (string or array) pass through unchanged
+- [x] **BLK-03**: Base64 `image` content blocks pass through to ollama (ollama supports base64 only — URL images are out of scope)
+- [x] **BLK-04**: Streaming response reconstructs the Anthropic SSE event sequence (`message_start` → `content_block_*` → `message_delta` → `message_stop`) into the client-facing Claude stream without reordering or dropped events
 
 ### Compatibility
 
@@ -70,13 +70,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PASS-01 | Phase 1 | Complete |
 | PASS-02 | Phase 1 | Complete |
 | PASS-03 | Phase 1 | Complete |
-| THINK-01 | Phase 2 | Pending |
-| THINK-02 | Phase 2 | Pending |
-| THINK-03 | Phase 2 | Pending |
-| BLK-01 | Phase 2 | Pending |
-| BLK-02 | Phase 2 | Pending |
-| BLK-03 | Phase 2 | Pending |
-| BLK-04 | Phase 2 | Pending |
+| THINK-01 | Phase 2 | Complete |
+| THINK-02 | Phase 2 | Complete |
+| THINK-03 | Phase 2 | Complete |
+| BLK-01 | Phase 2 | Complete |
+| BLK-02 | Phase 2 | Complete |
+| BLK-03 | Phase 2 | Complete |
+| BLK-04 | Phase 2 | Complete |
 | COMP-01 | Phase 3 | Pending |
 | COMP-02 | Phase 3 | Pending |
 | COMP-03 | Phase 3 | Pending |
