@@ -74,11 +74,11 @@ Plans:
   2. `stop_reason` values from ollama (`end_turn`, `max_tokens`, `tool_use`) map correctly to the Claude `stop_reason` field the client expects
   3. Usage (`input_tokens`/`output_tokens`) from ollama flows into the gateway's usage tracking under the claude transport
 
-**Plans**: TBD
+**Plans**: 1/1 plan planned
 
 Plans:
 
-- [ ] 03-01: TBD
+- [ ] 03-01-PLAN.md — ollama-claude compat self-check (COMP-01 field tolerance, COMP-02 stop_reason passthrough, COMP-03 usage extraction, fallback guard)
 
 ### Phase 4: Validation & Tests
 
@@ -106,7 +106,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Passthrough Transport & Auth | 2/2 | Complete    | 2026-07-07 |
 | 2. Thinking & Block Fidelity | 2/2 | Complete    | 2026-07-07 |
-| 3. Compatibility & Fallback | 0/TBD | Not started | - |
+| 3. Compatibility & Fallback | 0/1 | Not started | - |
 | 4. Validation & Tests | 0/TBD | Not started | - |
 
 ---
