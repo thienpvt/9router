@@ -28,9 +28,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Compatibility
 
-- [ ] **COMP-01**: Fields ollama ignores (`tool_choice`, `cache_control`, `metadata`) are either stripped before send or tolerated without erroring (verify which; ollama accepts `cache_control`/`anthropic-version` headers silently)
-- [ ] **COMP-02**: `stop_reason` values from ollama (`end_turn`, `max_tokens`, `tool_use`) map correctly to the Claude `stop_reason` field the client expects
-- [ ] **COMP-03**: Usage (`input_tokens`/`output_tokens`) from ollama flows into the gateway's usage tracking under the claude transport
+- [x] **COMP-01**: Fields ollama ignores (`tool_choice`, `cache_control`, `metadata`) are either stripped before send or tolerated without erroring (verify which; ollama accepts `cache_control`/`anthropic-version` headers silently)
+- [x] **COMP-02**: `stop_reason` values from ollama (`end_turn`, `max_tokens`, `tool_use`) map correctly to the Claude `stop_reason` field the client expects
+- [x] **COMP-03**: Usage (`input_tokens`/`output_tokens`) from ollama flows into the gateway's usage tracking under the claude transport
 - [x] **COMP-04**: Auth header scheme for ollama `/v1/messages` is confirmed and wired (local: API key not validated; cloud: existing ollama API key — likely `x-api-key` raw or `Authorization: bearer`, confirm against docs/probe)
 
 ### Validation
@@ -77,9 +77,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BLK-02 | Phase 2 | Complete |
 | BLK-03 | Phase 2 | Complete |
 | BLK-04 | Phase 2 | Complete |
-| COMP-01 | Phase 3 | Pending |
-| COMP-02 | Phase 3 | Pending |
-| COMP-03 | Phase 3 | Pending |
+| COMP-01 | Phase 3 | Complete |
+| COMP-02 | Phase 3 | Complete |
+| COMP-03 | Phase 3 | Complete |
 | COMP-04 | Phase 1 | Complete |
 | VAL-01 | Phase 4 | Pending |
 | VAL-02 | Phase 4 | Pending |
