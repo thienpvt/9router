@@ -5,6 +5,7 @@
 import { getCapabilitiesForModel } from "../../providers/capabilities.js";
 import { PROVIDERS } from "../../providers/index.js";
 import { LEVEL_TO_BUDGET, budgetToLevel, effortToBudget, effortToThinkingLevel } from "./thinking.js";
+import { FORMATS } from "../formats.js";
 
 // Map a target wire-format to its native thinking format (when capability has none).
 const FORMAT_TO_NATIVE = {
@@ -268,6 +269,10 @@ function applyFormat(fmt, body, cfg, caps) {
 // falls back to extracting from the current body when omitted.
 export function applyThinking(targetFormat, model, body, provider = null, intent = undefined) {
   if (!body || typeof body !== "object") return body;
+
+  // ponytail: ceiling = ollama under claude transport. Lift into PROVIDERS[ollama].quirks
+  // or a capability flag if a second native-claude provider lands.
+  if (provider === "ollama" && targetFormat === FORMATS.CLAUDE) return body;
 
   const { cleanModel, override } = parseSuffix(model);
   const cfg = override || intent || extractThinking(body);
