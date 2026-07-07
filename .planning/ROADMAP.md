@@ -32,12 +32,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Auth header scheme for ollama `/v1/messages` is confirmed (cloud: existing ollama API key — `x-api-key` raw or `Authorization: bearer`, confirmed against docs/probe; local: key not validated) and wired so requests authenticate successfully
   4. A non-Claude (openai-format) request to ollama still routes through the existing `/api/chat` transport unchanged — the openai/ollama-format path remains the fallback when no claude transport matches
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Add claude transport to ollama + ollama-local registries (x-api-key raw auth, openai-format fallback preserved)
+- [x] 01-01-PLAN.md — Add claude transport to ollama + ollama-local registries (x-api-key raw auth, openai-format fallback preserved)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -102,7 +102,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Passthrough Transport & Auth | 0/2 | Planning complete | - |
+| 1. Passthrough Transport & Auth | 1/2 | In Progress|  |
 | 2. Thinking & Block Fidelity | 0/TBD | Not started | - |
 | 3. Compatibility & Fallback | 0/TBD | Not started | - |
 | 4. Validation & Tests | 0/TBD | Not started | - |
