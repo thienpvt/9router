@@ -35,9 +35,9 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Validation
 
-- [ ] **VAL-01**: A regression test asserts a Claude-format request to an ollama provider resolves `targetFormat="claude"` and produces a body structurally identical to the client's (no openai intermediate)
-- [ ] **VAL-02**: A live/recorded round-trip test confirms thinking + tool_use blocks survive end-to-end against ollama cloud (or a mock of the `/v1/messages` contract)
-- [ ] **VAL-03**: Non-Claude (openai-format) request to ollama still routes through `/api/chat` unchanged — guarded by a test
+- [x] **VAL-01**: A regression test asserts a Claude-format request to an ollama provider resolves `targetFormat="claude"` and produces a body structurally identical to the client's (no openai intermediate)
+- [x] **VAL-02**: A live/recorded round-trip test confirms thinking + tool_use blocks survive end-to-end against ollama cloud (or a mock of the `/v1/messages` contract)
+- [x] **VAL-03**: Non-Claude (openai-format) request to ollama still routes through `/api/chat` unchanged — guarded by a test
 
 ## v2 Requirements
 
@@ -81,9 +81,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | COMP-02 | Phase 3 | Complete |
 | COMP-03 | Phase 3 | Complete |
 | COMP-04 | Phase 1 | Complete |
-| VAL-01 | Phase 4 | Pending |
-| VAL-02 | Phase 4 | Pending |
-| VAL-03 | Phase 4 | Pending |
+| VAL-01 | Phase 4 | Complete |
+| VAL-02 | Phase 4 | Complete |
+| VAL-03 | Phase 4 | Complete |
 
 **Coverage:**
 
