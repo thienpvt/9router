@@ -28,10 +28,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. A Claude-format request to Ollama Local resolves `targetFormat="claude"` and is sent to `http://localhost:11434/v1/messages` (host resolved via existing `resolveOllamaLocalHost`) with the same zero-translation behavior
   3. Auth header scheme for ollama `/v1/messages` is confirmed (cloud: existing ollama API key — `x-api-key` raw or `Authorization: bearer`, confirmed against docs/probe; local: key not validated) and wired so requests authenticate successfully
   4. A non-Claude (openai-format) request to ollama still routes through the existing `/api/chat` transport unchanged — the openai/ollama-format path remains the fallback when no claude transport matches
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Add claude transport to ollama + ollama-local registries (x-api-key raw auth, openai-format fallback preserved)
+- [ ] 01-02-PLAN.md — Generalize OllamaLocalExecutor.buildUrl for runtimeTransport + Phase 1 contract self-check
 
 ### Phase 2: Thinking & Block Fidelity
 **Goal**: Claude thinking, tool_use, tool_result, text, and base64 image content blocks round-trip losslessly through the passthrough, and ollama's streaming SSE reconstructs the full Anthropic event sequence back to the client
@@ -80,7 +81,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Passthrough Transport & Auth | 0/TBD | Not started | - |
+| 1. Passthrough Transport & Auth | 0/2 | Planning complete | - |
 | 2. Thinking & Block Fidelity | 0/TBD | Not started | - |
 | 3. Compatibility & Fallback | 0/TBD | Not started | - |
 | 4. Validation & Tests | 0/TBD | Not started | - |
