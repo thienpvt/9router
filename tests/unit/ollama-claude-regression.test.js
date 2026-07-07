@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveTransport } from "../../open-sse/services/provider.js";
+import { resolveTransport, detectFormat, getTargetFormat } from "../../open-sse/services/provider.js";
 import OllamaLocalExecutor from "../../open-sse/executors/ollama-local.js";
 import { translateRequest } from "../../open-sse/translator/index.js";
 import { FORMATS } from "../../open-sse/translator/formats.js";
@@ -12,8 +12,10 @@ import { FORMATS } from "../../open-sse/translator/formats.js";
 // dispatched body is structurally identical to the client body (no openai
 // intermediate hop). Phase 1 transport Contract A proves targetFormat=claude;
 // Phase 2 block-fidelity proves field-level identity; VAL-01 formalizes it as a
-// scoped deep-equal on the passthrough fields + a negative assertion (no
-// "choices" array, no openai rewrite).
+// scoped deep-equal on the passthrough fields (comparing against a PRE-CALL
+// snapshot — translateRequest mutates `body` in place, so the expected shape
+// must be captured before the call) + negative assertions for OpenAI-only
+// fields (choices / tool_calls / reasoning_effort / tools[*].function).
 //
 // prepareClaudeRequest (open-sse/translator/index.js:118-121, runs because
 // targetFormat===CLAUDE) normalizes cache_control — system-array rewrite and
@@ -38,6 +40,12 @@ describe("Phase 4: VAL-01 regression + VAL-03 fallback guard", () => {
       tools: [{ name: "get_weather", input_schema: {} }],
     };
 
+    // CR-01: translateRequest mutates `body` in place (let result = body at
+    // translator/index.js:54 + prepareClaudeRequest adds cache_control to
+    // tools[0]). Snapshot BEFORE the call so the expected shape reflects the
+    // client's pre-translation body, not the mutated result ref.
+    const snapshot = structuredClone(body);
+
     const result = translateRequest(
       FORMATS.CLAUDE,
       FORMATS.CLAUDE,
@@ -48,18 +56,26 @@ describe("Phase 4: VAL-01 regression + VAL-03 fallback guard", () => {
       "ollama"
     );
 
-    // Scoped deep-equal on the passthrough fields. NOT a full toEqual —
-    // prepareClaudeRequest may add/normalize headers, cache_control, anthropic-version.
+    // Scoped deep-equal on the passthrough fields, against the PRE-CALL
+    // snapshot. NOT a full toEqual — prepareClaudeRequest may add/normalize
+    // headers, cache_control, anthropic-version.
     expect(result).toMatchObject({
-      messages: body.messages,
-      system: body.system,
-      thinking: body.thinking,
-      output_config: body.output_config,
-      tools: body.tools,
+      messages: snapshot.messages,
+      system: snapshot.system,
+      thinking: snapshot.thinking,
+      output_config: snapshot.output_config,
+      tools: snapshot.tools,
     });
 
-    // Negative proof: never routed through OpenAI intermediate.
+    // WR-02: negative proof — never routed through OpenAI intermediate.
+    // Assert the high-signal OpenAI-only fields that would appear if an
+    // openai hop ran (choices, tool_calls, reasoning_effort, tools[*].function).
     expect(result).not.toHaveProperty("choices");
+    expect(result.messages?.[0]).not.toHaveProperty("tool_calls");
+    expect(result).not.toHaveProperty("reasoning_effort");
+    // Claude tools keep input_schema; OpenAI shape is tools[*].function.parameters
+    expect(result.tools?.[0]).not.toHaveProperty("function");
+    expect(result.tools?.[0]?.input_schema).toBeDefined();
   });
 
   // Asymmetry vs VAL-01 (ollama): ollama-local traverses applyThinking's general
@@ -79,6 +95,9 @@ describe("Phase 4: VAL-01 regression + VAL-03 fallback guard", () => {
       tools: [{ name: "get_weather", input_schema: {} }],
     };
 
+    // CR-01: snapshot before the call (translateRequest mutates body in place).
+    const snapshot = structuredClone(body);
+
     const result = translateRequest(
       FORMATS.CLAUDE,
       FORMATS.CLAUDE,
@@ -90,19 +109,25 @@ describe("Phase 4: VAL-01 regression + VAL-03 fallback guard", () => {
     );
 
     expect(result).toMatchObject({
-      messages: body.messages,
-      system: body.system,
-      tools: body.tools,
+      messages: snapshot.messages,
+      system: snapshot.system,
+      tools: snapshot.tools,
     });
+    // WR-02: negative proof — no OpenAI intermediate artifacts.
     expect(result).not.toHaveProperty("choices");
+    expect(result.messages?.[0]).not.toHaveProperty("tool_calls");
+    expect(result).not.toHaveProperty("reasoning_effort");
+    expect(result.tools?.[0]).not.toHaveProperty("function");
+    expect(result.tools?.[0]?.input_schema).toBeDefined();
   });
 
-  // Cache_control scoping: prepareClaudeRequest rewrites cache_control on
-  // system arrays and message content blocks (COMP-01c/d). Do NOT assert
-  // cache_control identity here — only prove the passthrough doesn't drop the
-  // message even when cache_control is normalized. Documents the known
-  // prepareClaudeRequest interaction (CONTEXT line 23, Phase 3 COMP-01).
-  it("Contract VAL-01 cache_control: prepareClaudeRequest may rewrite cache_control; passthrough fields unaffected", () => {
+  // Cache_control scoping: prepareClaudeRequest (claude.js:241-244) strips
+  // cache_control from message content blocks in Pass 1, then Pass 2 re-adds
+  // {type:"ephemeral"} only to the last non-thinking block of the LAST
+  // assistant with content. A user-only message has no assistant, so the strip
+  // is permanent — locks COMP-01d (cache_control normalization is real, not
+  // just documented). Scoped to ollama per CONTEXT line 23 + Phase 3 COMP-01.
+  it("Contract VAL-01 cache_control: prepareClaudeRequest strips cache_control from user content blocks (COMP-01d)", () => {
     const body = {
       model: "claude-sonnet-4-5",
       messages: [
@@ -125,22 +150,41 @@ describe("Phase 4: VAL-01 regression + VAL-03 fallback guard", () => {
       "ollama"
     );
 
-    // Text content survives — passthrough doesn't drop the message even when
-    // cache_control is normalized by prepareClaudeRequest.
+    // Text content survives — passthrough doesn't drop the message.
     expect(result.messages[0].content[0].text).toBe("hi");
-    // NOTE: cache_control shape is NOT asserted — prepareClaudeRequest may
-    // strip, move, or rewrite it (COMP-01d). The invariant is that the text
-    // content survives, not that cache_control round-trips verbatim.
+    // CR-02: cache_control is actually stripped from user content blocks by
+    // prepareClaudeRequest (no assistant → Pass 2 does not re-add it). Locks
+    // COMP-01d: the strip is real, not just prose.
+    expect(result.messages[0].content[0].cache_control).toBeUndefined();
   });
 
-  it("Contract VAL-03: openai-format request to ollama routes /api/chat (no claude transport matches)", () => {
-    // Phase 1 transport Contract B + C proves the mechanics: resolveTransport
-    // returns null AND buildUrl returns /api/chat without runtimeTransport.
-    // This is the Phase 4 named guard locking the fallback.
+  it("Contract VAL-03: openai-format request to ollama routes /api/chat (full routing decision chain)", () => {
+    // WR-01: reframe the Phase 1 Contract B/C duplicate to add incremental
+    // value — assert the FULL routing decision chain end-to-end at the atom
+    // level, not just the three atoms Phase 1 re-asserts. detectFormat proves
+    // the openai body is classified as openai (not misdetected as claude);
+    // resolveTransport null proves no claude transport matches an openai
+    // source; getTargetFormat proves the non-Claude path's targetFormat is the
+    // ollama format (Phase 1 buildUrl does not assert this). Together they lock
+    // the fallback decision: openai body → no claude transport → ollama format
+    // → /api/chat. Phase 1 transport Contract B/C owns the buildUrl atoms.
+    const openaiBody = {
+      model: "gpt-4",
+      messages: [{ role: "user", content: "hi" }],
+    };
+    expect(detectFormat(openaiBody)).toBe("openai");
     expect(resolveTransport("ollama", "openai")).toBeNull();
     expect(resolveTransport("ollama-local", "openai")).toBeNull();
+    expect(getTargetFormat("ollama")).toBe("ollama");
 
     const exec = new OllamaLocalExecutor();
     expect(exec.buildUrl("", true, 0, null)).toBe("http://localhost:11434/api/chat");
+
+    // WR-03: positive claude-path buildUrl — the milestone's actual dependency.
+    // Phase 1 Contract C covers this atom; re-asserted here as the positive
+    // counterpart to the fallback above, proving the same executor picks
+    // /v1/messages when a claude runtimeTransport is present.
+    const claudeCreds = { runtimeTransport: { baseUrl: "http://localhost:11434/v1/messages", format: "claude" } };
+    expect(exec.buildUrl("", true, 0, claudeCreds)).toBe("http://localhost:11434/v1/messages");
   });
 });
