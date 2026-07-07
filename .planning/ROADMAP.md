@@ -14,7 +14,7 @@ This milestone delivers lossless, zero-translation routing for Claude-format cli
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Passthrough Transport & Auth** - Claude-format requests resolve targetFormat="claude" and reach ollama /v1/messages (cloud + local) with zero translation; auth scheme confirmed and wired; openai-format fallback preserved (completed 2026-07-07)
-- [ ] **Phase 2: Thinking & Block Fidelity** - Claude thinking, tool_use, text, and base64 image blocks round-trip losslessly; streaming SSE reconstructs the Anthropic event sequence
+- [x] **Phase 2: Thinking & Block Fidelity** - Claude thinking, tool_use, text, and base64 image blocks round-trip losslessly; streaming SSE reconstructs the Anthropic event sequence (completed 2026-07-07)
 - [ ] **Phase 3: Compatibility & Fallback** - Unsupported fields tolerated, stop_reason and usage flow correctly into the Claude-compat response
 - [ ] **Phase 4: Validation & Tests** - Regression, round-trip, and fallback-guard tests prove the passthrough contract holds
 
@@ -55,13 +55,13 @@ Plans:
   3. `tool_use` and `tool_result` content blocks round-trip losslessly (ids, names, JSON input preserved) through the claude passthrough
   4. `text` blocks and `system` (string or array) pass through unchanged; base64 `image` blocks pass through to ollama (URL images out of scope); streaming reconstructs the Anthropic SSE event sequence (`message_start` → `content_block_*` → `message_delta` → `message_stop`) without reordering or dropped events
 
-**Plans**: 2 plans
+**Plans**: 2/2 plans complete
 
 Plans:
 **Wave 1** (parallel — no file overlap)
 
-- [ ] 02-01-PLAN.md — applyThinking ollama-claude short-circuit (THINK-01/02/03) + thinking passthrough self-check
-- [ ] 02-02-PLAN.md — block fidelity verification self-check (BLK-01/02/03/04: tool_use/tool_result/text/system/image + SSE passthrough)
+- [x] 02-01-PLAN.md — applyThinking ollama-claude short-circuit (THINK-01/02/03) + thinking passthrough self-check
+- [x] 02-02-PLAN.md — block fidelity verification self-check (BLK-01/02/03/04: tool_use/tool_result/text/system/image + SSE passthrough)
 
 ### Phase 3: Compatibility & Fallback
 
@@ -105,7 +105,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Passthrough Transport & Auth | 2/2 | Complete    | 2026-07-07 |
-| 2. Thinking & Block Fidelity | 0/2 | Not started | - |
+| 2. Thinking & Block Fidelity | 2/2 | Complete   | 2026-07-07 |
 | 3. Compatibility & Fallback | 0/TBD | Not started | - |
 | 4. Validation & Tests | 0/TBD | Not started | - |
 
