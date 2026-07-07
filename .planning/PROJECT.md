@@ -21,14 +21,15 @@ Claude Code clients get lossless, zero-translation access to Ollama (cloud + loc
 - ✓ Claude `thinking` blocks + `output_config.effort` pass through natively (applyThinking no-op on the ollama claude path); providerThinking injection normalized to Claude shape — Phase 2 (THINK-01, THINK-02, THINK-03)
 - ✓ `tool_use`/`tool_result`/`text`/`system`/base64 `image`/`document` content blocks round-trip lossless through the same-format passthrough; `hasValidContent` now recognizes image/document blocks — Phase 2 (BLK-01, BLK-02, BLK-03)
 - ✓ ollama's native SSE event sequence forwarded unchanged (same-format response passthrough) — Phase 2 mechanism (BLK-04; full round-trip → Phase 4 VAL-02)
+- ✓ Fields ollama ignores (tool_choice/cache_control/metadata) tolerated without erroring under the claude transport (sent as-is or rewritten, not stripped) — Phase 3 (COMP-01)
+- ✓ ollama `stop_reason` (end_turn/max_tokens/tool_use) flows to the client unchanged via same-format response passthrough; `usage` (input_tokens/output_tokens + cache_read/cache_creation) captured by the gateway's Claude-shape-aware extraction; native ollama NDJSON usage guarded for the non-Claude fallback path — Phase 3 (COMP-02, COMP-03)
 
 ### Active
 
 <!-- Current scope. Building toward these. -->
 
 - [ ] Ollama cloud auth header scheme confirmed against live `/v1/messages` (wired `x-api-key` raw by convention — live probe deferred to Phase 4 VAL-02)
-- [ ] Fields ollama ignores (tool_choice, cache_control, metadata) stripped or tolerated without erroring
-- [ ] ollama `stop_reason` + usage flow correctly into the Claude-compat response
+- [ ] Regression + round-trip + fallback-guard tests lock the passthrough contract (VAL-01/02/03)
 - [ ] Claude thinking blocks + `output_config.effort` pass through natively and surface via ollama's `thinking_delta` SSE
 - [ ] tool_use / tool_result / text / image(base64) content blocks round-trip lossless through passthrough
 - [ ] Unsupported fields (tool_choice, cache_control, metadata, document/citations/URL-image blocks) stripped or ignored without erroring
@@ -85,4 +86,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-07 after Phase 2 (Thinking & Block Fidelity) complete*
+*Last updated: 2026-07-07 after Phase 3 (Compatibility & Fallback) complete*

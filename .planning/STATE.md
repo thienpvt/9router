@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: Claude→Ollama Passthrough (Anthropic-compat endpoint)
 current_phase: 4
 current_phase_name: Validation & Tests
-status: executing
-stopped_at: Phase 02 complete, ready to discuss Phase 3
+status: planning
+stopped_at: Phase 03 complete, ready to discuss Phase 4
 last_updated: "2026-07-07T16:26:33.530Z"
 last_activity: 2026-07-07
 last_activity_desc: Phase 03 complete, transitioned to Phase 4
@@ -24,16 +24,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-07)
 
 **Core value:** Claude Code clients get lossless, zero-translation access to Ollama (cloud + local) through Ollama's native Anthropic-compatible `/v1/messages` endpoint — no lossy claude→openai→ollama double-hop.
-**Current focus:** Phase 03 — compatibility-fallback
+**Current focus:** Phase 4 — Validation & Tests
 
 ## Current Position
 
-Phase: 4 — Validation & Tests
+Phase: 4 of 4 (Validation & Tests)
 Plan: Not started
-Status: Executing Phase 03
+Status: Ready to discuss
 Last activity: 2026-07-07 — Phase 03 complete, transitioned to Phase 4
 
-Progress: [██████████████░░░░░░] 50% (2/4 phases)
+Progress: [██████████████████░░] 75% (3/4 phases)
 
 ## Performance Metrics
 
@@ -70,6 +70,7 @@ Recent decisions affecting current work:
 - Local-host substitution over verbatim rt.baseUrl (PATTERNS.md Option 2) — ✓ Phase 1 (try/catch wraps new URL, urlSuffix appended, query preserved)
 - Full thinking passthrough, no per-model thinkingFormat — ✓ Phase 2 (applyThinking no-op on ollama claude path; stray providerThinking reasoning_effort normalized to output_config.effort per WR-01)
 - hasValidContent recognizes image/document blocks (BLK-03 fix) — ✓ Phase 2 (image/doc-only user messages no longer silently dropped by prepareClaudeRequest)
+- Tolerate-don't-strip ignored fields + no stop_reason normalizer + Claude-shape usage extraction — ✓ Phase 3 (existing same-format passthrough + extractUsage already deliver COMP-01/02/03; no source change needed, tests lock the contract)
 
 ### Pending Todos
 
@@ -91,5 +92,5 @@ Items acknowledged and carried forward (v2 requirements, not v1 scope):
 ## Session Continuity
 
 Last session: 2026-07-07
-Stopped at: Phase 02 complete, ready to discuss Phase 3
+Stopped at: Phase 03 complete, ready to discuss Phase 4
 Resume file: None
