@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-07)
 Phase: 4 of 4 (Validation & Tests) — COMPLETE
 Plan: 1/1 done
 Status: Milestone complete (4/4 phases)
-Last activity: 2026-07-08 — Phase 04 complete, milestone v1.0 phases done
+Last activity: 2026-07-08 — Completed quick task 260708-k1x: Map claude code max thinking effort to xhigh when calling OpenAI provider
 
 Progress: [████████████████████] 100% (4/4 phases)
 
@@ -81,6 +81,12 @@ None yet.
 ### Blockers/Concerns
 
 - COMP-04 cloud auth scheme: wired `x-api-key` raw by convention (matching GLM); code path verified by inspection across Phases 1-4. Remaining: live auth-success + full SSE round-trip confirmation against ollama cloud is a `*.real.test.js` (under tests/translator/real/) skipped without credentials — the Phase 4 mock covers the contract. Not a blocker for the committed suite.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260708-k1x | Map claude code max thinking effort to xhigh when calling OpenAI provider (fixes 400 max effort not support) | 2026-07-08 | c930c38 | [260708-k1x-map-claude-code-max-thinking-effort-to-x](./quick/260708-k1x-map-claude-code-max-thinking-effort-to-x/) |
 
 ## Deferred Items
 
