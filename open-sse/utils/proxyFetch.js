@@ -100,9 +100,9 @@ async function tryGotScrapingFetch(url, options) {
 // DNS cache — use Map to avoid prototype pollution via malformed hostnames
 const DNS_CACHE = new Map();
 const MITM_BYPASS_HOSTS = [
-  "cloudcode-pa.googleapis.com",
-  "daily-cloudcode-pa.googleapis.com",
-  "api.individual.githubcopilot.com",
+//  "cloudcode-pa.googleapis.com",
+//  "daily-cloudcode-pa.googleapis.com",
+//  "api.individual.githubcopilot.com",
 //  "q.us-east-1.amazonaws.com",
 //  "codewhisperer.us-east-1.amazonaws.com",
 //  "api2.cursor.sh",
