@@ -293,7 +293,12 @@ function flattenTypeArrays(obj) {
 
   if (obj.type && Array.isArray(obj.type)) {
     const nonNullTypes = obj.type.filter(t => t !== "null");
-    obj.type = nonNullTypes.length > 0 ? nonNullTypes[0] : "string";
+    // Prefer "array" when items survive the collapse — otherwise items ends up on a scalar type
+    if (nonNullTypes.length > 0) {
+      obj.type = obj.items !== undefined && nonNullTypes.includes("array") ? "array" : nonNullTypes[0];
+    } else {
+      obj.type = "string";
+    }
   }
 
   for (const value of Object.values(obj)) {
@@ -332,9 +337,22 @@ function convertPrefixItems(obj) {
   }
 }
 
-// Gemini requires items on every type:"array" schema — fill a permissive placeholder
+// Gemini Schema proto requires BOTH directions:
+//   type:"array" ⇒ items present ("missing field" otherwise)
+//   items present ⇒ type == ARRAY ("field predicate failed: $type == Type.ARRAY" otherwise)
 function ensureArrayItems(obj) {
   if (!obj || typeof obj !== "object") return;
+  if (obj.items !== undefined) {
+    const t = typeof obj.type === "string" ? obj.type.toLowerCase() : obj.type;
+    if (!t) {
+      obj.type = "array";
+    } else if (t !== "array") {
+      delete obj.items; // ponytail: drops the element schema for contradictory non-array+items schemas; could infer the array variant of a type:[..] union instead
+    }
+    if (obj.items && (typeof obj.items !== "object" || Array.isArray(obj.items))) {
+      obj.items = { type: "string" }; // boolean / draft-04 tuple items form → Schema message placeholder
+    }
+  }
   if (obj.type === "array" && !obj.items) {
     obj.items = { type: "string" };
   }
