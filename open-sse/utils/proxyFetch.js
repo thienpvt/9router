@@ -103,9 +103,9 @@ const MITM_BYPASS_HOSTS = [
   "cloudcode-pa.googleapis.com",
   "daily-cloudcode-pa.googleapis.com",
   "api.individual.githubcopilot.com",
-  "q.us-east-1.amazonaws.com",
-  "codewhisperer.us-east-1.amazonaws.com",
-  "api2.cursor.sh",
+//  "q.us-east-1.amazonaws.com",
+//  "codewhisperer.us-east-1.amazonaws.com",
+//  "api2.cursor.sh",
 ];
 const GOOGLE_DNS_SERVERS = ["8.8.8.8", "8.8.4.4"];
 const HTTPS_PORT = 443;
