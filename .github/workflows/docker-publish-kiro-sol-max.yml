@@ -9,7 +9,6 @@ on:
 
 env:
   GHCR_IMAGE: ghcr.io/${{ github.repository }}
-  TAG: kiro-sol-max
 
 concurrency:
   group: docker-kiro-sol-max-${{ github.ref }}
@@ -34,16 +33,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ env.GHCR_IMAGE }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ env.GHCR_IMAGE }}:${{ env.TAG }}
-          cache-from: type=registry,ref=${{ env.GHCR_IMAGE }}:buildcache
-          cache-to: type=registry,ref=${{ env.GHCR_IMAGE }}:buildcache,mode=max
-          # amd64 only: Dockerfile bases thienpvt/node-router:builder/:runner are
-          # single-arch amd64, so an arm64 platform cannot be resolved.
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           platforms: linux/amd64
           provenance: false
           sbom: false
