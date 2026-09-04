@@ -13,7 +13,9 @@ import {
   KIRO_AGENTIC_SYSTEM_PROMPT,
   resolveDefaultProfileArn,
   buildKiroAdditionalModelRequestFieldsForModel,
-  usesKiroNativeGptEffort
+  usesKiroNativeGptEffort,
+  KIRO_TOOL_NAME_MAX_LENGTH,
+  KIRO_TOOL_DESCRIPTION_MAX_LENGTH
 } from "../../config/kiroConstants.js";
 import { parseDataUri } from "../concerns/image.js";
 import { DEFAULT_IMAGE_MIME } from "../schema/index.js";
@@ -225,25 +227,48 @@ function convertMessages(messages, tools, model) {
         if (!userMsg.userInputMessage.userInputMessageContext) {
           userMsg.userInputMessage.userInputMessageContext = {};
         }
-        userMsg.userInputMessage.userInputMessageContext.tools = tools.map(t => {
-          const name = t.function?.name || t.name;
+        const cleanSchemaVal = (val) => {
+          if (Array.isArray(val)) return val.map(cleanSchemaVal);
+          if (!val || typeof val !== "object") return val;
+          const cleaned = {};
+          for (const [key, child] of Object.entries(val)) {
+            if (key === "additionalProperties") continue;
+            if (key === "required" && Array.isArray(child) && child.length === 0) continue;
+            cleaned[key] = cleanSchemaVal(child);
+          }
+          return cleaned;
+        };
+        const normalizeToolSchema = (rawSchema) => {
+          const cleaned = cleanSchemaVal(rawSchema && typeof rawSchema === "object" ? rawSchema : {});
+          cleaned.type = "object";
+          if (!cleaned.properties || typeof cleaned.properties !== "object" || Array.isArray(cleaned.properties)) {
+            cleaned.properties = {};
+          }
+          if (Array.isArray(cleaned.required)) {
+            cleaned.required = [...new Set(cleaned.required.filter(
+              (name) => typeof name === "string" && Object.hasOwn(cleaned.properties, name)
+            ))];
+            if (cleaned.required.length === 0) delete cleaned.required;
+          } else {
+            delete cleaned.required;
+          }
+          return cleaned;
+        };
+        userMsg.userInputMessage.userInputMessageContext.tools = tools.map((t, idx) => {
+          const rawName = String(t.function?.name || t.name || `tool_${idx + 1}`).trim();
+          const name = rawName.slice(0, KIRO_TOOL_NAME_MAX_LENGTH);
           let description = t.function?.description || t.description || "";
-
           if (!description.trim()) {
             description = `Tool: ${name}`;
           }
-
+          description = description.slice(0, KIRO_TOOL_DESCRIPTION_MAX_LENGTH);
           const schema = t.function?.parameters || t.parameters || t.input_schema || {};
-          // Normalize schema: Kiro requires required[] and proper type/properties
-          const normalizedSchema = Object.keys(schema).length === 0
-            ? { type: "object", properties: {}, required: [] }
-            : { ...schema, required: schema.required ?? [] };
 
           return {
             toolSpecification: {
               name,
               description,
-              inputSchema: { json: normalizedSchema }
+              inputSchema: { json: normalizeToolSchema(schema) }
             }
           };
         });
