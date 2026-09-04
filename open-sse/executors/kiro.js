@@ -322,6 +322,10 @@ export class KiroExecutor extends BaseExecutor {
   }
 
   transformRequest(model, body, stream, credentials) {
+    if (body && typeof body === "object") {
+      delete body.systemPrompt;
+      delete body.agentMode;
+    }
     return body;
   }
 
