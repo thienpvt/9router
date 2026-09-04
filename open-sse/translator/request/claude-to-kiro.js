@@ -33,8 +33,6 @@ import {
   resolveDefaultProfileArn,
   buildKiroAdditionalModelRequestFieldsForModel,
   usesKiroNativeGptEffort,
-  KIRO_TOOL_NAME_MAX_LENGTH,
-  KIRO_TOOL_DESCRIPTION_MAX_LENGTH,
 } from "../../config/kiroConstants.js";
 import { DEFAULT_IMAGE_MIME } from "../schema/index.js";
 import { ROLE, CLAUDE_BLOCK } from "../schema/index.js";
@@ -126,46 +124,20 @@ function convertClaudeMessagesToKiro(messages, tools, model) {
 
   const clientProvidedTools = Array.isArray(tools) && tools.length > 0;
 
-  const cleanSchemaValue = (val) => {
-    if (Array.isArray(val)) return val.map(cleanSchemaValue);
-    if (!val || typeof val !== "object") return val;
-    const cleaned = {};
-    for (const [key, child] of Object.entries(val)) {
-      if (key === "additionalProperties") continue;
-      if (key === "required" && Array.isArray(child) && child.length === 0) continue;
-      cleaned[key] = cleanSchemaValue(child);
-    }
-    return cleaned;
-  };
-
-  const normalizeToolSchema = (rawSchema) => {
-    const cleaned = cleanSchemaValue(rawSchema && typeof rawSchema === "object" ? rawSchema : {});
-    cleaned.type = "object";
-    if (!cleaned.properties || typeof cleaned.properties !== "object" || Array.isArray(cleaned.properties)) {
-      cleaned.properties = {};
-    }
-    if (Array.isArray(cleaned.required)) {
-      cleaned.required = [...new Set(cleaned.required.filter(
-        (name) => typeof name === "string" && Object.hasOwn(cleaned.properties, name)
-      ))];
-      if (cleaned.required.length === 0) delete cleaned.required;
-    } else {
-      delete cleaned.required;
-    }
-    return cleaned;
-  };
-
   const buildToolSpecs = () =>
-    tools.map((t, idx) => {
-      const rawName = String(t.name || `tool_${idx + 1}`).trim();
-      const name = rawName.slice(0, KIRO_TOOL_NAME_MAX_LENGTH);
-      const rawDesc = String(t.description || `Tool: ${name}`);
-      const description = rawDesc.slice(0, KIRO_TOOL_DESCRIPTION_MAX_LENGTH);
+    tools.map((t) => {
+      const name = t.name;
+      const description = t.description || `Tool: ${name}`;
+      const schema = t.input_schema || {};
+      const normalizedSchema =
+        Object.keys(schema).length === 0
+          ? { type: "object", properties: {}, required: [] }
+          : { ...schema, required: schema.required ?? [] };
       return {
         toolSpecification: {
           name,
           description,
-          inputSchema: { json: normalizeToolSchema(t.input_schema) },
+          inputSchema: { json: normalizedSchema },
         },
       };
     });

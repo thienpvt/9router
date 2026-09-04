@@ -179,10 +179,7 @@ export function extractKiroEffortLevel(body) {
   if (typeof effort !== "string") return null;
   const normalized = effort.toLowerCase();
   if (normalized === "none" || normalized === "off" || normalized === "disabled") return null;
-  if (normalized === "xhigh") return "high";
-  if (normalized === "minimal") return "low";
-  if (normalized === "ultra") return "max";
-  if (["low", "medium", "high", "max"].includes(normalized)) return normalized;
+  if (["low", "medium", "high", "xhigh", "max"].includes(normalized)) return normalized;
   return null;
 }
 
