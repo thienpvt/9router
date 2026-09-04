@@ -1,17 +1,17 @@
-# Branch-only image build: pushes to kiro-sol-max produce a
-# ghcr.io/<owner>/9router:kiro-sol-max image for manual pull/deploy.
-name: Build & Push kiro-sol-max image
+# Branch-only image build: pushes to self-developed produce a
+# ghcr.io/<owner>/9router:self-developed image for manual pull/deploy.
+name: Build & Push self-developed image
 
 on:
   push:
-    branches: [kiro-sol-max]
+    branches: [self-developed]
   workflow_dispatch:
 
 env:
   GHCR_IMAGE: ghcr.io/${{ github.repository }}
 
 concurrency:
-  group: docker-kiro-sol-max-${{ github.ref }}
+  group: docker-self-developed-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
