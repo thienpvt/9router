@@ -9,7 +9,8 @@ RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories
 FROM base AS builder
 
 COPY package.json ./
-RUN npm install --registry=https://registry.npmmirror.com
+RUN --mount=type=cache,target=/root/.npm \
+  npm install --registry=https://registry.npmjs.org
 
 COPY . ./
 ENV NEXT_TELEMETRY_DISABLED=1
