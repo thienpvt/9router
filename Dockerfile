@@ -3,12 +3,13 @@ ARG BUILD_IMAGE=thienpvt/node-router:builder
 ARG RUNTIME_IMAGE=thienpvt/node-router:runner
 FROM ${BUILD_IMAGE} AS base
 WORKDIR /app
+# CN mirror for apk (used by builder and runner stages)
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories
 
 FROM base AS builder
 
 COPY package.json ./
-RUN --mount=type=cache,target=/root/.npm \
-  npm install
+RUN npm install --registry=https://registry.npmmirror.com
 
 COPY . ./
 ENV NEXT_TELEMETRY_DISABLED=1
