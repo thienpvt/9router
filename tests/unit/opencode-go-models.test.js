@@ -18,9 +18,9 @@ vi.mock("../../open-sse/utils/requestLogger.js", () => ({
   }),
 }));
 
-import { PROVIDER_MODELS, getModelSupportedFormats, isValidModel } from "../../open-sse/config/providerModels.js";
+import { PROVIDER_MODELS, getModelTargetFormat, getModelSupportedFormats, isValidModel } from "../../open-sse/config/providerModels.js";
 import { PROVIDERS } from "../../open-sse/config/providers.js";
-import { resolveTransport } from "../../open-sse/services/provider.js";
+import { getTargetFormat, resolveTransport } from "../../open-sse/services/provider.js";
 import { getExecutor } from "../../open-sse/executors/index.js";
 import { handleChatCore } from "../../open-sse/handlers/chatCore.js";
 import "../translator/registerAll.js";
@@ -155,6 +155,14 @@ describe("OpenCode Go per-model transport guard (chatCore logic)", () => {
       expect(pickTransport("opencode-go", "openai-responses", "opencode-go", m)).toBeNull();
     }
   });
+
+  it("routes DeepSeek V4.1 Flash to /chat/completions for OpenAI clients, and never to /messages or /responses", () => {
+    expect(pickTransport("opencode-go", "openai", "opencode-go", "deepseek-v4.1-flash")?.baseUrl).toBe(
+      "https://opencode.ai/zen/go/v1/chat/completions"
+    );
+    expect(pickTransport("opencode-go", "claude", "opencode-go", "deepseek-v4.1-flash")).toBeNull();
+    expect(pickTransport("opencode-go", "openai-responses", "opencode-go", "deepseek-v4.1-flash")).toBeNull();
+  });
 });
 
 describe("handler fallback", () => {
@@ -234,4 +242,123 @@ describe("handler fallback", () => {
       expect(result.response.status).toBe(200);
     }
   );
+});
+
+describe("synthetic absent model compatibility boundaries", () => {
+  it.each(["openai", "claude", "openai-responses"])(
+    "returns null supportedFormats and null transport for absent model with source format %s",
+    (format) => {
+      expect(getModelSupportedFormats("opencode-go", SYNTHETIC_UNKNOWN)).toBeNull();
+      expect(pickTransport("opencode-go", format, "opencode-go", SYNTHETIC_UNKNOWN)).toBeNull();
+      expect(getModelTargetFormat("opencode-go", SYNTHETIC_UNKNOWN)).toBeNull();
+      expect(getTargetFormat("opencode-go")).toBe("openai");
+    }
+  );
+
+  it("returns null transport and null supportedFormats on single-endpoint openai provider", () => {
+    expect(resolveTransport("openai", "openai")).toBeNull();
+    expect(resolveTransport("openai", "claude")).toBeNull();
+    expect(pickTransport("openai", "openai", "openai", SYNTHETIC_UNKNOWN)).toBeNull();
+    expect(pickTransport("openai", "claude", "openai", SYNTHETIC_UNKNOWN)).toBeNull();
+    expect(getModelSupportedFormats("openai", SYNTHETIC_UNKNOWN)).toBeNull();
+    expect(getTargetFormat("openai")).toBe("openai");
+  });
+});
+
+describe("declared-open and empty-format catalog entries", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("preserves sourceFormat-matched transport for declared-open model (no supportedFormats)", async () => {
+    const fixtureId = "fixture-declared-open-model";
+    const fixture = { id: fixtureId, name: "Fixture Declared Open Model" };
+    PROVIDER_MODELS["opencode-go"].push(fixture);
+    try {
+      expect(isValidModel("opencode-go", fixtureId)).toBe(true);
+      expect(getModelSupportedFormats("opencode-go", fixtureId)).toBeNull();
+      expect(pickTransport("opencode-go", "claude", "opencode-go", fixtureId)?.baseUrl).toBe(
+        "https://opencode.ai/zen/go/v1/messages"
+      );
+
+      const executor = getExecutor("opencode-go");
+      let capturedArgs = null;
+      let resolvedUrl = null;
+
+      vi.spyOn(executor, "execute").mockImplementation(async (args) => {
+        capturedArgs = args;
+        resolvedUrl = executor.buildUrl(args.model, args.stream, 0, args.credentials);
+        return {
+          response: new Response(
+            JSON.stringify({
+              id: "msg_test",
+              type: "message",
+              role: "assistant",
+              content: [{ type: "text", text: "declared-open response" }],
+              stop_reason: "end_turn",
+              usage: { input_tokens: 10, output_tokens: 5 },
+            }),
+            {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }
+          ),
+          url: resolvedUrl,
+          headers: {},
+          transformedBody: args.body,
+        };
+      });
+
+      const result = await handleChatCore({
+        body: {
+          model: fixtureId,
+          max_tokens: 100,
+          messages: [{ role: "user", content: "hello" }],
+          stream: false,
+        },
+        modelInfo: { provider: "opencode-go", model: fixtureId },
+        credentials: { apiKey: "test-fake-key", providerSpecificData: {} },
+        sourceFormatOverride: "claude",
+        stream: false,
+        rtkEnabled: false,
+        headroomEnabled: false,
+        cavemanEnabled: false,
+        ponytailEnabled: false,
+        pxpipeEnabled: false,
+        log: {
+          debug: vi.fn(),
+          info: vi.fn(),
+          warn: vi.fn(),
+          line: vi.fn(),
+          errorLine: vi.fn(),
+        },
+        connectionId: "test-connection-id",
+      });
+
+      expect(capturedArgs).not.toBeNull();
+      expect(capturedArgs.credentials?.runtimeTransport?.baseUrl).toBe("https://opencode.ai/zen/go/v1/messages");
+      expect(resolvedUrl).toBe("https://opencode.ai/zen/go/v1/messages");
+      expect(result.success).toBe(true);
+      expect(result.response.status).toBe(200);
+    } finally {
+      const idx = PROVIDER_MODELS["opencode-go"].findIndex((m) => m.id === fixtureId);
+      if (idx !== -1) PROVIDER_MODELS["opencode-go"].splice(idx, 1);
+    }
+  });
+
+  it("selects no transport when supportedFormats is explicitly empty", () => {
+    const fixtureId = "fixture-empty-formats-model";
+    const fixture = { id: fixtureId, name: "Fixture Empty Formats Model", supportedFormats: [] };
+    PROVIDER_MODELS["opencode-go"].push(fixture);
+    try {
+      expect(isValidModel("opencode-go", fixtureId)).toBe(true);
+      expect(getModelSupportedFormats("opencode-go", fixtureId)).toEqual([]);
+      expect(pickTransport("opencode-go", "claude", "opencode-go", fixtureId)).toBeNull();
+      expect(pickTransport("opencode-go", "openai", "opencode-go", fixtureId)).toBeNull();
+      expect(pickTransport("opencode-go", "openai-responses", "opencode-go", fixtureId)).toBeNull();
+    } finally {
+      const idx = PROVIDER_MODELS["opencode-go"].findIndex((m) => m.id === fixtureId);
+      if (idx !== -1) PROVIDER_MODELS["opencode-go"].splice(idx, 1);
+    }
+  });
 });
