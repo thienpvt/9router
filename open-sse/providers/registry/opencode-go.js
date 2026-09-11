@@ -40,15 +40,18 @@ export default {
     //   responses        — Grok, GPT-5.6 Luna, Muse Spark
     // Each model lives on exactly one endpoint; the gateway cross-translates for
     // clients of other formats. A model must therefore declare only the client
-    // format that maps to its native endpoint — declaring "claude" for a
-    // chat/completions-only model (e.g. DeepSeek) routed claude-format clients
-    // straight to /messages, which 404s upstream. Chat-only models here work from
-    // a claude-format client because chatCore falls back to /chat/completions and
-    // the translator converts (this is what makes glm-5.3-flash work today).
+    // format that maps to its native endpoint — declaring "claude" for a model whose
+    // /messages shape is unsupported routed claude-format clients straight to
+    // /messages and failed upstream. The DeepSeek V4 family is what broke: a plain
+    // message returns 200, but any tool_use history (a single call is enough, so the
+    // second turn of a tool-using conversation) returns a bare 400 whose body is just
+    // {"model":"..."} — no error object, surfacing to users as "fetch failed".
+    // Confirmed against the live shim 2026-09-11. Chat-only models here still work
+    // from a claude-format client because chatCore falls back to /chat/completions
+    // and the translator converts (this is what makes glm-5.3-flash work today).
     //
     // chat/completions family (["openai"] only):
     { id: "deepseek-v4-flash", name: "DeepSeek V4 Flash", supportedFormats: ["openai"] },
-    { id: "deepseek-v4-flash-vision-exp", name: "DeepSeek V4 Flash Vision Exp", supportedFormats: ["openai"] },
     { id: "deepseek-v4-pro", name: "DeepSeek V4 Pro", supportedFormats: ["openai"] },
     { id: "glm-5", name: "GLM 5", supportedFormats: ["openai"] },
     { id: "glm-5.1", name: "GLM 5.1", supportedFormats: ["openai"] },
@@ -69,6 +72,10 @@ export default {
     { id: "mimo-v2.5-pro", name: "MiMo V2.5 Pro", supportedFormats: ["openai"] },
     { id: "omen-alpha", name: "Omen Alpha", supportedFormats: ["openai"] },
     // /messages family — MiniMax, Qwen (native Anthropic endpoint + OpenAI chat).
+    // deepseek-v4-flash-vision-exp is the exception to the DeepSeek restriction
+    // above: it accepts the identical tool_use history that 400s its siblings
+    // (measured 2026-09-11, byte-identical request, minimax-m3 as control).
+    { id: "deepseek-v4-flash-vision-exp", name: "DeepSeek V4 Flash Vision Exp", supportedFormats: ["openai", "claude"] },
     { id: "minimax-m2.5", name: "MiniMax M2.5", supportedFormats: ["openai", "claude"] },
     { id: "minimax-m2.7", name: "MiniMax M2.7", supportedFormats: ["openai", "claude"] },
     { id: "minimax-m3", name: "MiniMax M3", supportedFormats: ["openai", "claude"] },

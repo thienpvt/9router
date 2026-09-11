@@ -43,6 +43,7 @@ function translatedSession(sessionId, clientTool) {
 // Models served by /responses only (official Go endpoint table): Grok, GPT-5.6 Luna,
 // Muse Spark. Everything else lives on /chat/completions or /messages and routes by
 // the transport picked in chatCore — only these force the /responses URL + shape.
+// Muse Spark variants are matched by the isMuseSparkModel helper, not listed here.
 const RESPONSES_MODELS = new Set([
   "gpt-5.6-luna",
   "grok-4.5",

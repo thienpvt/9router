@@ -10,7 +10,7 @@ import { resolveTransport } from "../../open-sse/services/provider.js";
 const CHAT_ONLY = [
   "glm-5", "glm-5.1", "glm-5.2", "glm-5.3", "glm-5.3-flash",
   "kimi-k2.5", "kimi-k2.6", "kimi-k2.7-code", "kimi-k3", "longcat-2.0",
-  "deepseek-v4-flash", "deepseek-v4-flash-vision-exp", "deepseek-v4-pro",
+  "deepseek-v4-flash", "deepseek-v4-pro",
   "mimo-v2-omni", "mimo-v2-pro", "mimo-v2.5", "mimo-v2.5-pro",
   "hy3", "hy3-preview", "hy4-preview", "omen-alpha",
 ];
@@ -18,6 +18,9 @@ const CLAUDE_CAPABLE = [
   "minimax-m2.5", "minimax-m2.7", "minimax-m3",
   "qwen3.5-plus", "qwen3.6-plus", "qwen3.7-max", "qwen3.7-plus",
   "qwen3.8-flash", "qwen3.8-max",
+  // Measured exception to the DeepSeek restriction: accepts the same tool_use
+  // history that 400s deepseek-v4-pro/flash (2026-09-11, minimax-m3 control).
+  "deepseek-v4-flash-vision-exp",
 ];
 const RESPONSES_CAPABLE = [
   "gpt-5.6-luna", "grok-4.5", "grok-4.6",
