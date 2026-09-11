@@ -33,6 +33,7 @@ export default {
     { format: "claude", baseUrl: "https://opencode.ai/zen/go/v1/messages", auth: { combined: true, header: "x-api-key", scheme: "raw", anthropicVersion: true } },
     { format: "openai-responses", baseUrl: "https://opencode.ai/zen/go/v1/responses", auth: { combined: true, header: "Authorization", scheme: "bearer" } },
   ],
+  // supportedFormats follow the endpoint table in https://opencode.ai/docs/go/
   models: [
     // Official OpenCode Go endpoint families (opencode.ai/docs/go/#endpoints):
     //   chat/completions — GLM, Kimi, DeepSeek, MiMo, Hy, LongCat, Omen
