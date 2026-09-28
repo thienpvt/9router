@@ -38,7 +38,7 @@ export default {
     // Official OpenCode Go endpoint families (opencode.ai/docs/go/#endpoints):
     //   chat/completions — GLM, Kimi, DeepSeek, MiMo, Hy, LongCat, Omen
     //   messages         — MiniMax, Qwen
-    //   responses        — Grok, GPT-5.6 Luna, Muse Spark
+    //   responses        — Grok, GPT Luna, Muse Spark
     // Each model lives on exactly one endpoint; the gateway cross-translates for
     // clients of other formats. A model must therefore declare only the client
     // format that maps to its native endpoint — declaring "claude" for a model whose
@@ -72,6 +72,8 @@ export default {
     { id: "mimo-v2-pro", name: "MiMo V2 Pro", supportedFormats: ["openai"] },
     { id: "mimo-v2.5", name: "MiMo V2.5", supportedFormats: ["openai"] },
     { id: "mimo-v2.5-pro", name: "MiMo V2.5 Pro", supportedFormats: ["openai"] },
+    { id: "mimo-v2.6-flash", name: "MiMo V2.6 Flash", supportedFormats: ["openai"] },
+    { id: "mimo-v2.6-pro", name: "MiMo V2.6 Pro", supportedFormats: ["openai"] },
     { id: "omen-alpha", name: "Omen Alpha", supportedFormats: ["openai"] },
     // /messages family — MiniMax, Qwen (native Anthropic endpoint + OpenAI chat).
     // deepseek-v4-flash-vision-exp is the exception to the DeepSeek restriction
@@ -87,16 +89,23 @@ export default {
     { id: "qwen3.7-plus", name: "Qwen 3.7 Plus", supportedFormats: ["openai", "claude"] },
     { id: "qwen3.8-flash", name: "Qwen 3.8 Flash", supportedFormats: ["openai", "claude"] },
     { id: "qwen3.8-max", name: "Qwen 3.8 Max", supportedFormats: ["openai", "claude"] },
-    // /responses family — Grok, GPT-5.6 Luna, Muse Spark. targetFormat routes
+    { id: "space-bunny-free", name: "Space Bunny Free", supportedFormats: ["openai", "claude"] },
+    // /responses family — Grok, GPT Luna, Muse Spark. targetFormat routes
     // chat/claude clients through translation to /responses; the executor then
     // builds the /responses URL (see opencode-go.js isResponsesModel). Responses-only
     // models force chatCore past the sourceFormat-matched transports (see chatCore guard).
     { id: "gpt-5.6-luna", name: "GPT 5.6 Luna", targetFormat: "openai-responses", supportedFormats: ["openai-responses"] },
+    { id: "gpt-6-luna", name: "GPT 6 Luna", targetFormat: "openai-responses", supportedFormats: ["openai-responses"] },
     { id: "grok-4.5", name: "Grok 4.5", targetFormat: "openai-responses", supportedFormats: ["openai-responses"] },
     { id: "grok-4.6", name: "Grok 4.6", targetFormat: "openai-responses", supportedFormats: ["openai-responses"] },
+    { id: "grok-4.7", name: "Grok 4.7", targetFormat: "openai-responses", supportedFormats: ["openai-responses"] },
     { id: "muse-spark-1.2-contributor", name: "Muse Spark 1.2 Contributor", targetFormat: "openai-responses", supportedFormats: ["openai-responses"] },
     { id: "muse-spark-1.3-contributor", name: "Muse Spark 1.3 Contributor", targetFormat: "openai-responses", supportedFormats: ["openai-responses"] },
   ],
+  // Live catalogue; ids outside this curated list get their endpoint lane from the
+  // family regex in providers/models/helpers.js (opencodeFamilyFormats).
+  modelsFetcher: { url: "https://opencode.ai/zen/go/v1/models", type: "opencode-go" },
+  passthroughModels: true,
   features: {
     usage: true,
     usageApikey: true,

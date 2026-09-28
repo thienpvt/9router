@@ -28,25 +28,25 @@ import "../translator/registerAll.js";
 // Official OpenCode Go endpoint families (opencode.ai/docs/go/#endpoints):
 //   chat/completions — GLM, Kimi, DeepSeek, MiMo, Hy, LongCat, Omen
 //   messages         — MiniMax, Qwen
-//   responses        — Grok, GPT-5.6 Luna, Muse Spark
+//   responses        — Grok, GPT Luna, Muse Spark
 const CHAT_ONLY = [
   "glm-5", "glm-5.1", "glm-5.2", "glm-5.3", "glm-5.3-flash",
   "kimi-k2.5", "kimi-k2.6", "kimi-k2.7-code", "kimi-k3", "longcat-2.0",
   "deepseek-v4-flash", "deepseek-v4-pro",
   "deepseek-v4.1-flash",
-  "mimo-v2-omni", "mimo-v2-pro", "mimo-v2.5", "mimo-v2.5-pro",
+  "mimo-v2-omni", "mimo-v2-pro", "mimo-v2.5", "mimo-v2.5-pro", "mimo-v2.6-flash", "mimo-v2.6-pro",
   "hy3", "hy3-preview", "hy4-preview", "omen-alpha",
 ];
 const CLAUDE_CAPABLE = [
   "minimax-m2.5", "minimax-m2.7", "minimax-m3",
   "qwen3.5-plus", "qwen3.6-plus", "qwen3.7-max", "qwen3.7-plus",
-  "qwen3.8-flash", "qwen3.8-max",
+  "qwen3.8-flash", "qwen3.8-max", "space-bunny-free",
   // Measured exception to the DeepSeek restriction: accepts the same tool_use
   // history that 400s deepseek-v4-pro/flash (2026-09-11, minimax-m3 control).
   "deepseek-v4-flash-vision-exp",
 ];
 const RESPONSES_CAPABLE = [
-  "gpt-5.6-luna", "grok-4.5", "grok-4.6",
+  "gpt-5.6-luna", "gpt-6-luna", "grok-4.5", "grok-4.6", "grok-4.7",
   "muse-spark-1.2-contributor", "muse-spark-1.3-contributor",
 ];
 
@@ -74,9 +74,37 @@ describe("OpenCode Go model catalog", () => {
     expect(entry?.supportedFormats).toEqual(["openai"]);
   });
 
-  it("returns null supportedFormats and null transport for uncatalogued synthetic model", () => {
-    expect(getModelSupportedFormats("opencode-go", SYNTHETIC_UNKNOWN)).toBeNull();
+  it("gives an uncatalogued synthetic model the chat lane and no claude transport", () => {
+    expect(getModelSupportedFormats("opencode-go", SYNTHETIC_UNKNOWN)).toEqual(["openai"]);
     expect(pickTransport("opencode-go", "claude", "opencode-go", SYNTHETIC_UNKNOWN)).toBeNull();
+  });
+});
+
+describe("OpenCode Go family fallback (unknown/passthrough ids)", () => {
+  it("routes unknown grok/gpt ids to the responses lane", () => {
+    expect(getModelSupportedFormats("opencode-go", "grok-4.8")).toEqual(["openai-responses"]);
+    expect(getModelTargetFormat("opencode-go", "gpt-6-foo")).toBe("openai-responses");
+  });
+
+  it("gives unknown chat-family ids the chat-only lane, never /messages", () => {
+    for (const m of ["kimi-k4", "glm-6", "mimo-v3", "omen-beta"]) {
+      expect(getModelSupportedFormats("opencode-go", m)).toEqual(["openai"]);
+    }
+  });
+
+  it("keeps unknown minimax/qwen ids on the /messages lane too", () => {
+    for (const m of ["minimax-m9", "qwen4-max"]) {
+      expect(getModelSupportedFormats("opencode-go", m)).toEqual(["openai", "claude"]);
+    }
+  });
+
+  it("curated entries win over the family fallback", () => {
+    expect(getModelSupportedFormats("opencode-go", "deepseek-v4-flash-vision-exp")).toEqual(["openai", "claude"]);
+    expect(getModelSupportedFormats("opencode-go", "deepseek-v4-pro")).toEqual(["openai"]);
+  });
+
+  it("keeps unknown deepseek-v4 ids on the chat lane, never /messages", () => {
+    expect(getModelSupportedFormats("opencode-go", "deepseek-v4-pro-max")).toEqual(["openai"]);
   });
 });
 
@@ -261,10 +289,12 @@ describe("handler fallback", () => {
 
 describe("synthetic absent model compatibility boundaries", () => {
   it.each(["openai", "claude", "openai-responses"])(
-    "returns null supportedFormats and null transport for absent model with source format %s",
+    "keeps absent model on the chat lane with source format %s",
     (format) => {
-      expect(getModelSupportedFormats("opencode-go", SYNTHETIC_UNKNOWN)).toBeNull();
-      expect(pickTransport("opencode-go", format, "opencode-go", SYNTHETIC_UNKNOWN)).toBeNull();
+      expect(getModelSupportedFormats("opencode-go", SYNTHETIC_UNKNOWN)).toEqual(["openai"]);
+      expect(pickTransport("opencode-go", format, "opencode-go", SYNTHETIC_UNKNOWN)?.baseUrl ?? null).toBe(
+        format === "openai" ? "https://opencode.ai/zen/go/v1/chat/completions" : null
+      );
       expect(getModelTargetFormat("opencode-go", SYNTHETIC_UNKNOWN)).toBeNull();
       expect(getTargetFormat("opencode-go")).toBe("openai");
     }
