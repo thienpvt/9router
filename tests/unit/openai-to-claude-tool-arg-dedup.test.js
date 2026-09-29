@@ -173,5 +173,6 @@ describe("openaiToClaudeResponse tool argument deduplication & repair", () => {
 
     const delta2 = getInputJsonDelta(events2);
     expect(delta2).toBeUndefined();
+    expect([...events1, ...(events2 || [])].filter((event) => event.type === "message_stop")).toHaveLength(1);
   });
 });

@@ -140,6 +140,21 @@ describe("responses → claude end-to-end keeps parallel tool_use blocks separat
   });
 });
 
+describe("Responses → Claude terminal events", () => {
+  it.each([true, false])("emits one message_stop when response.completed is %s", (completed) => {
+    const state = initState(FORMATS.CLAUDE);
+    const events = [
+      { type: "response.output_text.delta", delta: "hello" },
+      ...(completed ? [{ type: "response.completed", response: { usage: { input_tokens: 5, output_tokens: 1 } } }] : []),
+    ];
+    const out = events.flatMap((event) => translateResponse(FORMATS.OPENAI_RESPONSES, FORMATS.CLAUDE, event, state));
+    out.push(...translateResponse(FORMATS.OPENAI_RESPONSES, FORMATS.CLAUDE, null, state));
+
+    expect(out.filter((event) => event?.type === "message_delta").map((event) => event.delta.stop_reason)).toEqual(["end_turn"]);
+    expect(out.filter((event) => event?.type === "message_stop")).toHaveLength(1);
+  });
+});
+
 describe("fallback call_ids stay unique within a batch", () => {
   it("same-millisecond fallbacks never collide", () => {
     const ids = new Set(Array.from({ length: 50 }, () => clampResponsesCallId(undefined)));

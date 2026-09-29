@@ -319,8 +319,8 @@ export function openaiToClaudeResponse(chunk, state) {
       }
     }
 
-    if (!state.finishReasonSent) {
-      state.finishReasonSent = true;
+    if (!state.claudeFinishReasonSent) {
+      state.claudeFinishReasonSent = true;
       // Mark finish for later usage injection in stream.js
       state.finishReason = choice.finish_reason;
 
