@@ -70,16 +70,16 @@ describe("applyThinking (openai): model-aware effort fallback", () => {
     });
   });
 
-  describe("gpt-5.6-terra preserves max and ultra", () => {
+  describe("gpt-5.6-terra preserves max and ultra for Codex", () => {
     it("max preserved", () => {
       const body = { reasoning_effort: "max" };
-      const out = applyThinking(FORMATS.OPENAI, "gpt-5.6-terra", body, "openai");
+      const out = applyThinking(FORMATS.OPENAI, "gpt-5.6-terra", body, "codex");
       expect(out.reasoning_effort).toBe("max");
     });
 
     it("ultra preserved", () => {
       const body = { reasoning_effort: "ultra" };
-      const out = applyThinking(FORMATS.OPENAI, "gpt-5.6-terra", body, "openai");
+      const out = applyThinking(FORMATS.OPENAI, "gpt-5.6-terra", body, "codex");
       expect(out.reasoning_effort).toBe("ultra");
     });
   });
@@ -87,19 +87,19 @@ describe("applyThinking (openai): model-aware effort fallback", () => {
   describe("gpt-5.6-luna preserves max; ultra → max", () => {
     it("max preserved", () => {
       const body = { reasoning_effort: "max" };
-      const out = applyThinking(FORMATS.OPENAI, "gpt-5.6-luna", body, "openai");
+      const out = applyThinking(FORMATS.OPENAI, "gpt-5.6-luna", body, "codex");
       expect(out.reasoning_effort).toBe("max");
     });
 
     it("ultra maps to max (nearest supported sibling)", () => {
       const body = { reasoning_effort: "ultra" };
-      const out = applyThinking(FORMATS.OPENAI, "gpt-5.6-luna", body, "openai");
+      const out = applyThinking(FORMATS.OPENAI, "gpt-5.6-luna", body, "codex");
       expect(out.reasoning_effort).toBe("max");
     });
 
     it("output_config.effort ultra → max", () => {
       const body = { output_config: { effort: "ultra" } };
-      const out = applyThinking(FORMATS.OPENAI, "gpt-5.6-luna", body, "openai");
+      const out = applyThinking(FORMATS.OPENAI, "gpt-5.6-luna", body, "codex");
       expect(out.reasoning_effort).toBe("max");
     });
   });

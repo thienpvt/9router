@@ -278,6 +278,7 @@ export function resolveOpenAiEffort(level, provider, model) {
 
 // Apply unified thinking config to body in the resolved provider-native format.
 function applyFormat(fmt, body, cfg, caps, model = null, provider = null, display) {
+  const supportedLevels = getThinkingLevels(provider, model);
   const none = cfg.mode === "none";
   const canDisable = caps.thinkingCanDisable !== false;
   // Model cannot disable thinking → clamp "none" to minimal effort instead.
@@ -298,7 +299,9 @@ function applyFormat(fmt, body, cfg, caps, model = null, provider = null, displa
       if (canDisable) body.thinking = { type: "adaptive", ...(display ? { display } : {}) };
       else delete body.thinking;
       const level = toLevel(eff);
-      body.output_config = { effort: level === "xhigh" || level === "auto" ? "high" : level };
+      // xhigh is model-gated (Opus/Sonnet 4.6 reject it) — clamp when not advertised.
+      body.output_config = { effort: level === "auto" ? "high"
+        : level === "xhigh" && !supportedLevels?.includes("xhigh") ? "high" : level };
       break;
     }
     case "claude-budget": {
