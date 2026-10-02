@@ -191,6 +191,11 @@ describe("applyThinking per provider format", () => {
     expect(out.thinking).toEqual({ type: "enabled" });
     expect(out.reasoning_effort).toBe("high");
   });
+  it("Ollama Cloud DeepSeek normalizes max effort without throwing", () => {
+    const out = apply("ollama", "deepseek-v4.1-flash:cloud", { reasoning_effort: "max" }, "ollama");
+    expect(out.thinking).toEqual({ type: "enabled" });
+    expect(out.reasoning_effort).toBe("max");
+  });
   it("Kimi on → reasoning_effort", () => {
     const out = apply("openai", "kimi-k2.6", { reasoning_effort: "high" }, "kimi");
     expect(out.reasoning_effort).toBe("high");
