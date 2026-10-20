@@ -42,4 +42,10 @@ describe("getThinkingLevels GPT-5.6 effort matrix", () => {
     expect(levels || []).not.toContain("max");
     expect(levels || []).not.toContain("ultra");
   });
+
+  it("does not add max for other Codex models", () => {
+    const levels = getThinkingLevels("codex", "gpt-daybreak-blue-latest");
+    expect(levels || []).not.toContain("max");
+    expect(levels || []).not.toContain("ultra");
+  });
 });
