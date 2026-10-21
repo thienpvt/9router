@@ -122,6 +122,22 @@ async function execute(executor = new KiroExecutor(), overrides = {}) {
   });
 }
 
+function toolBody(name, schema) {
+  return {
+    conversationState: {
+      currentMessage: {
+        userInputMessage: {
+          content: "Use the available tool.",
+          modelId: "m",
+          userInputMessageContext: {
+            tools: [{ toolSpecification: { name, inputSchema: { json: schema } } }]
+          }
+        }
+      }
+    }
+  };
+}
+
 beforeEach(() => {
   fetchMock.mockReset();
   delete process.env.KIRO_TOOL_CALL_REPAIR_BUFFER_MAX_BYTES;
@@ -306,6 +322,143 @@ describe("Kiro terminal integrity recovery", () => {
     expect(body).toContain("kiro_tool_call_repair_retry_failed");
     expect(body).not.toContain('"name":"read_file"');
   });
+
+  it.each([
+    ["omitted", undefined],
+    ["empty string", ""],
+    ["whitespace", " \n\t"],
+    ["explicit object", {}],
+    ["serialized object", "{}"]
+  ])("preserves optional-only tool input (%s) as empty arguments", async (_label, input) => {
+    fetchMock.mockResolvedValueOnce(response([
+      frame("toolUseEvent", {
+        toolUseId: "toolu_bdrk_01CnweFva3qARgEGNAiMNm67",
+        name: "ListAgents",
+        input,
+        stop: true
+      })
+    ]));
+    const body = await (await execute(new KiroExecutor(), {
+      body: toolBody("ListAgents", { type: "object", properties: { channel: { type: "string" } } }),
+      credentials: { accessToken: "test-token", providerSpecificData: { kiroToolCallRepair: false } }
+    })).response.text();
+
+    expect(body).toContain('"id":"toolu_bdrk_01CnweFva3qARgEGNAiMNm67"');
+    expect(body).toContain('"name":"ListAgents"');
+    expect(body).toContain('"arguments":"{}"');
+    expect(body).toContain('"finish_reason":"tool_calls"');
+    expect(body).not.toContain('"error"');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("retains optional-only tool schemas during the bounded retry", async () => {
+    fetchMock
+      .mockResolvedValueOnce(response([]))
+      .mockResolvedValueOnce(response([
+        frame("toolUseEvent", { toolUseId: "agents", name: "ListAgents", stop: true })
+      ]));
+
+    const body = await (await execute(new KiroExecutor(), {
+      body: toolBody("ListAgents", { type: "object", properties: {} })
+    })).response.text();
+
+    expect(body).toContain('"id":"agents"');
+    expect(body).toContain('"arguments":"{}"');
+    expect(body).toContain('"finish_reason":"tool_calls"');
+    expect(body).not.toContain('"error"');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves a no-input tool beside a fragmented parameterized call", async () => {
+    const requestBody = toolBody("ListAgents", { type: "object", properties: {}, required: [] });
+    requestBody.conversationState.currentMessage.userInputMessage.userInputMessageContext.tools.push({
+      toolSpecification: {
+        name: "read_file",
+        inputSchema: { json: { type: "object", properties: { path: { type: "string" } }, required: ["path"] } }
+      }
+    });
+    fetchMock.mockResolvedValueOnce(response([
+      frame("toolUseEvent", { toolUseId: "agents", name: "ListAgents" }),
+      frame("toolUseEvent", { toolUseId: "read", name: "read_file", input: '{"path":' }),
+      frame("toolUseEvent", { toolUseId: "agents", name: "ListAgents", stop: true }),
+      frame("toolUseEvent", { toolUseId: "read", name: "read_file", input: '"safe.txt"}', stop: true })
+    ]));
+
+    const body = await (await execute(new KiroExecutor(), { body: requestBody })).response.text();
+
+    expect(body).toContain('"id":"agents"');
+    expect(body).toContain('"arguments":"{}"');
+    expect(body).toContain('"id":"read"');
+    expect(body).toContain('"arguments":"{\\"path\\":\\"safe.txt\\"}"');
+    expect(body).toContain('"finish_reason":"tool_calls"');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])("rejects conflicting tool names without losing valid siblings (%s)", async (withSibling) => {
+    fetchMock.mockResolvedValueOnce(response([
+      frame("toolUseEvent", { toolUseId: "conflicting", name: "ListAgents" }),
+      frame("toolUseEvent", { toolUseId: "conflicting", name: "read_file", input: { path: "safe.txt" } }),
+      ...(withSibling ? [frame("toolUseEvent", { toolUseId: "valid", name: "ListAgents", stop: true })] : [])
+    ]));
+
+    const body = await (await execute(new KiroExecutor(), {
+      body: toolBody("ListAgents", { type: "object", properties: {} }),
+      credentials: { accessToken: "test-token", providerSpecificData: { kiroToolCallRepair: false } }
+    })).response.text();
+
+    expect(body).not.toContain('"id":"conflicting"');
+    if (withSibling) {
+      expect(body).toContain('"id":"valid"');
+      expect(body).toContain('"arguments":"{}"');
+      expect(body).toContain('"finish_reason":"tool_calls"');
+    } else {
+      expect(body).toContain("invalid_kiro_tool_call");
+      expect(body).not.toContain('"tool_calls"');
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ["required property", { type: "object", properties: { path: { type: "string" } }, required: ["path"] }],
+    ["minimum property count", { type: "object", minProperties: 1 }],
+    ["constant input", { type: "object", const: { path: "safe.txt" } }],
+    ["enumerated input", { type: "object", enum: [{ path: "safe.txt" }] }],
+    ["composed requirements", { type: "object", allOf: [{ required: ["path"] }] }],
+    ["referenced requirements", { type: "object", $ref: "#/$defs/input", $defs: { input: { required: ["path"] } } }],
+    ["dynamic reference", { type: "object", $dynamicRef: "#/$defs/input", $defs: { input: { required: ["path"] } } }],
+    ["recursive reference", { type: "object", $recursiveRef: "#/$defs/input", $defs: { input: { required: ["path"] } } }]
+  ])("does not synthesize empty input for a schema with %s", async (_label, schema) => {
+    fetchMock.mockResolvedValueOnce(response([
+      frame("toolUseEvent", { toolUseId: "incomplete", name: "read_file", stop: true })
+    ]));
+
+    const body = await (await execute(new KiroExecutor(), {
+      body: toolBody("read_file", schema),
+      credentials: { accessToken: "test-token", providerSpecificData: { kiroToolCallRepair: false } }
+    })).response.text();
+
+    expect(body).toContain("invalid_kiro_tool_call");
+    expect(body).not.toContain('"tool_calls"');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([null, [], 42, "null", "[]", '{"channel":'])(
+    "does not replace invalid optional-only tool input %j with empty arguments",
+    async (input) => {
+      fetchMock.mockResolvedValueOnce(response([
+        frame("toolUseEvent", { toolUseId: "bad", name: "ListAgents", input, stop: true })
+      ]));
+
+      const body = await (await execute(new KiroExecutor(), {
+        body: toolBody("ListAgents", { type: "object", properties: {} }),
+        credentials: { accessToken: "test-token", providerSpecificData: { kiroToolCallRepair: false } }
+      })).response.text();
+
+      expect(body).toContain("invalid_kiro_tool_call");
+      expect(body).not.toContain('"tool_calls"');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    }
+  );
 
   it("repairs a non-string toolUseId before releasing the tool call", async () => {
     fetchMock

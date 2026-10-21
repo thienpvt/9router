@@ -427,6 +427,10 @@ export class KiroExecutor extends BaseExecutor {
   }
 
   async runIntegrityRecovery(rawResponse, args, options) {
+    options = {
+      ...options,
+      toolSpecs: args.body?.conversationState?.currentMessage?.userInputMessage?.userInputMessageContext?.tools || []
+    };
     const first = await this.readRecoverableIntegrityAttempt(
       rawResponse,
       args.model,
@@ -535,6 +539,7 @@ export class KiroExecutor extends BaseExecutor {
   async readIntegrityAttempt(rawResponse, model, options, attempt) {
     let diagnostics;
     const transformed = this.transformEventStreamToSSE(rawResponse, model, {
+      toolSpecs: options.toolSpecs,
       maxToolBytes: Math.max(1, Math.floor(options.maxBytes / 2)),
       onTerminalState: (value) => {
         diagnostics = value;
@@ -624,6 +629,15 @@ export class KiroExecutor extends BaseExecutor {
     const capabilityModel = resolveKiroModel(model).upstream;
     const contextWindow = getCapabilitiesForModel("kiro", capabilityModel).contextWindow || 200000;
     const eventCounts = {};
+    // Kiro can omit input fragments for an empty invocation. Only infer {} when
+    // the advertised schema is a simple object that permits no arguments.
+    const emptyInputTools = new Set((options.toolSpecs || []).filter(({ toolSpecification }) => {
+      const schema = toolSpecification?.inputSchema?.json;
+      return schema?.type === "object" && !schema.required?.length &&
+        !(schema.minProperties > 0) &&
+        !["$ref", "$dynamicRef", "$recursiveRef", "allOf", "anyOf", "oneOf", "not", "if", "const", "enum"]
+          .some((key) => Object.hasOwn(schema, key));
+    }).map(({ toolSpecification }) => toolSpecification.name));
     const state = {
       buffer: new Uint8Array(0),
       chunkIndex: 0,
@@ -717,10 +731,14 @@ export class KiroExecutor extends BaseExecutor {
       assertToolBufferBound();
     };
     const parsedToolInput = (tool) => {
+      if (tool.inputError) throw tool.inputError;
+      const rawInput = tool.inputKind === "string" ? tool.inputChunks.join("") : "";
+      if ((!tool.inputKind || (tool.inputKind === "string" && !rawInput.trim())) &&
+          emptyInputTools.has(tool.name)) return {};
       if (!tool.inputKind) throw new Error("Kiro tool call is missing input");
       if (tool.inputKind === "object") return tool.inputObject;
       try {
-        const input = JSON.parse(tool.inputChunks.join(""));
+        const input = JSON.parse(rawInput);
         if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("not an object");
         return input;
       } catch (error) {
@@ -856,10 +874,14 @@ export class KiroExecutor extends BaseExecutor {
             state.tools.set(id, tool);
             state.bufferedToolBytes += encoder.encode(id).byteLength + encoder.encode(name).byteLength + 32;
             assertToolBufferBound();
-          } else if (tool.name !== name) {
-            throw new Error("Kiro tool name changed between fragments");
           }
-          appendToolInput(tool, value.input);
+          try {
+            if (tool.name !== name) throw new Error("Kiro tool name changed between fragments");
+            appendToolInput(tool, value.input);
+          } catch (error) {
+            tool.inputError ||= error;
+            throw error;
+          }
         }
       } else if (eventType === "messageStopEvent") {
         state.explicitStop = true;
