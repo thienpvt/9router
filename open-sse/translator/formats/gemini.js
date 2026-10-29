@@ -301,11 +301,27 @@ function flattenTypeArrays(obj) {
 
   if (obj.type && Array.isArray(obj.type)) {
     const nonNullTypes = obj.type.filter(t => t !== "null");
-    // Prefer "array" when items survive the collapse — otherwise items ends up on a scalar type
-    if (nonNullTypes.length > 0) {
-      obj.type = obj.items !== undefined && nonNullTypes.includes("array") ? "array" : nonNullTypes[0];
-    } else {
+    if (nonNullTypes.length === 0) {
       obj.type = "string";
+    } else if (nonNullTypes.length === 1) {
+      obj.type = nonNullTypes[0];
+    } else {
+      // Multiple types: choose best fitting type (prefer structural clues then string over boolean/number)
+      if (obj.properties && nonNullTypes.includes("object")) {
+        obj.type = "object";
+      } else if (obj.items && typeof obj.items === "object" && Object.keys(obj.items).length > 0 && obj.items.type && nonNullTypes.includes("array")) {
+        obj.type = "array";
+      } else if (nonNullTypes.includes("string")) {
+        obj.type = "string";
+      } else if (nonNullTypes.includes("number")) {
+        obj.type = "number";
+      } else if (nonNullTypes.includes("integer")) {
+        obj.type = "integer";
+      } else if (nonNullTypes.includes("boolean")) {
+        obj.type = "boolean";
+      } else {
+        obj.type = nonNullTypes[0];
+      }
     }
   }
 
@@ -368,10 +384,57 @@ function ensureArrayItems(obj) {
       obj.items = { type: "string" }; // boolean / draft-04 tuple items form → Schema message placeholder
     }
   }
-  if (obj.type === "array" && !obj.items) {
-    obj.items = { type: "string" };
+  if (obj.type === "array") {
+    if (!obj.items || typeof obj.items !== "object" || Object.keys(obj.items).length === 0) {
+      obj.items = { type: "string" };
+    } else if (!obj.items.type) {
+      if (obj.items.properties) {
+        obj.items.type = "object";
+      } else if (obj.items.items) {
+        obj.items.type = "array";
+      } else {
+        obj.items.type = "string";
+      }
+    }
   }
   for (const v of Object.values(obj)) if (v && typeof v === "object") ensureArrayItems(v);
+}
+
+// Gemini Schema proto validation rules:
+// 1. Schema.items predicate: $type == Type.ARRAY. If type is not "array", items field MUST NOT exist.
+// 2. Schema.properties / required predicate: $type == Type.OBJECT. If type is not "object", properties and required MUST NOT exist.
+function enforceTypeConstraints(obj) {
+  if (!obj || typeof obj !== "object") return;
+
+  for (const value of Object.values(obj)) {
+    if (value && typeof value === "object") {
+      enforceTypeConstraints(value);
+    }
+  }
+
+  if (obj.type === "array") {
+    delete obj.properties;
+    delete obj.required;
+    if (!obj.items || typeof obj.items !== "object" || Object.keys(obj.items).length === 0) {
+      obj.items = { type: "string" };
+    } else if (!obj.items.type) {
+      if (obj.items.properties) {
+        obj.items.type = "object";
+      } else if (obj.items.items) {
+        obj.items.type = "array";
+      } else {
+        obj.items.type = "string";
+      }
+    }
+  } else {
+    // Non-array schemas MUST NOT carry items
+    delete obj.items;
+  }
+
+  if (obj.type !== "object") {
+    delete obj.properties;
+    delete obj.required;
+  }
 }
 
 // Clean JSON Schema for Antigravity API compatibility - removes unsupported keywords recursively
@@ -461,6 +524,9 @@ export function cleanJSONSchemaForAntigravity(schema) {
   }
 
   addPlaceholders(cleaned);
+
+  // Phase 6: Enforce Gemini protobuf type predicates (items only on array, properties/required only on object)
+  enforceTypeConstraints(cleaned);
 
   return cleaned;
 }

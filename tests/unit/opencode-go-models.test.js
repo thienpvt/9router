@@ -31,9 +31,8 @@ import "../translator/registerAll.js";
 //   responses        — Grok, GPT Luna, Muse Spark
 const CHAT_ONLY = [
   "glm-5", "glm-5.1", "glm-5.2", "glm-5.3", "glm-5.3-flash",
-  "kimi-k2.5", "kimi-k2.6", "kimi-k2.7-code", "kimi-k3", "longcat-2.0",
-  "deepseek-v4-flash", "deepseek-v4-pro",
-  "deepseek-v4.1-flash",
+  "kimi-k2.5", "kimi-k2.6", "kimi-k2.7-code", "kimi-k3", "kimi-k3.1-pro", "longcat-2.0",
+  "deepseek-v4-flash", "deepseek-v4-pro", "deepseek-v4.1-flash",
   "mimo-v2-omni", "mimo-v2-pro", "mimo-v2.5", "mimo-v2.5-pro", "mimo-v2.6-flash", "mimo-v2.6-pro",
   "hy3", "hy3-preview", "hy4-preview", "omen-alpha",
 ];
