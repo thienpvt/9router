@@ -397,7 +397,14 @@ function ensureArrayItems(obj) {
       }
     }
   }
-  for (const v of Object.values(obj)) if (v && typeof v === "object") ensureArrayItems(v);
+  for (const [key, value] of Object.entries(obj)) {
+    if (!value || typeof value !== "object") continue;
+    if (key === "properties" && !Array.isArray(value)) {
+      for (const schema of Object.values(value)) ensureArrayItems(schema);
+    } else {
+      ensureArrayItems(value);
+    }
+  }
 }
 
 // Gemini Schema proto validation rules:
@@ -406,8 +413,11 @@ function ensureArrayItems(obj) {
 function enforceTypeConstraints(obj) {
   if (!obj || typeof obj !== "object") return;
 
-  for (const value of Object.values(obj)) {
-    if (value && typeof value === "object") {
+  for (const [key, value] of Object.entries(obj)) {
+    if (!value || typeof value !== "object") continue;
+    if (key === "properties" && !Array.isArray(value)) {
+      for (const schema of Object.values(value)) enforceTypeConstraints(schema);
+    } else {
       enforceTypeConstraints(value);
     }
   }
