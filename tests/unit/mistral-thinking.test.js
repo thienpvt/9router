@@ -6,6 +6,7 @@ import { translateNonStreamingResponse, handleNonStreamingResponse } from "../..
 import { normalizeMistralContent } from "../../open-sse/translator/concerns/reasoning.js";
 import { applyThinking } from "../../open-sse/translator/concerns/thinkingUnified.js";
 import { DefaultExecutor } from "../../open-sse/executors/default.js";
+import { getThinkingLevels } from "../../open-sse/providers/thinkingLevels.js";
 import "../translator/registerAll.js";
 
 const delta = { content: [{ type: "thinking", thinking: [{ type: "text", text: "think" }], closed: true }, { type: "text", text: "answer" }] };
@@ -25,6 +26,24 @@ describe("Mistral reasoning response", () => {
     expect(mistral.messages).toEqual([{ role: "assistant", content: "hello" }, { role: "assistant", content: "answer" }]);
     const go = new DefaultExecutor("opencode-go").transformRequest(model, { model, messages: [messages[0]] });
     expect(go.messages[0].reasoning_content).toBe(" ");
+  });
+  it("uses the published Mistral effort catalog", () => {
+    expect(getThinkingLevels("mistral", "deepseek-v4-1-flash-1017")).toEqual(["none", "low", "high", "xhigh", "max"]);
+    expect(getThinkingLevels("mistral", "zai-glm-5-3")).toEqual(["low", "high", "max"]);
+    expect(getThinkingLevels("mistral", "zai-glm-5-3-flash")).toEqual(["low", "high", "max"]);
+  });
+  it("maps unsupported medium using the provider effort catalog", () => {
+    for (const level of ["none", "low", "medium", "high", "xhigh", "max"]) {
+      const body = { reasoning_effort: level };
+      applyThinking(FORMATS.OPENAI, "deepseek-v4-1-flash-1017", body, "mistral");
+      expect(body.reasoning_effort).toBe(level === "medium" ? "high" : level);
+    }
+    const other = { reasoning_effort: "medium" };
+    applyThinking(FORMATS.OPENAI, "deepseek-v4-1-flash-1017", other, "opencode-go");
+    expect(other.reasoning_effort).not.toBeUndefined();
+    const glm = { reasoning_effort: "medium" };
+    applyThinking(FORMATS.OPENAI, "zai-glm-5-3", glm, "mistral");
+    expect(glm.reasoning_effort).toBe("high");
   });
   it("sends reasoning effort without DeepSeek's unsupported thinking field", () => {
     const body = { reasoning_effort: "high" };

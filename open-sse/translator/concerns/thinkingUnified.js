@@ -276,6 +276,7 @@ export function resolveOpenAiEffort(level, provider, model) {
   if (!level) return level;
   const allowed = getThinkingLevels(provider, model);
   if (Array.isArray(allowed) && allowed.includes(level)) return level;
+  if (level === "medium" && Array.isArray(allowed) && allowed.includes("high")) return "high";
   if (level === "ultra") {
     if (Array.isArray(allowed) && allowed.includes("max")) return "max";
     return "xhigh";
