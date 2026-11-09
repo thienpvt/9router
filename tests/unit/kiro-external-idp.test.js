@@ -33,7 +33,9 @@ describe("Kiro external_idp (CLIProxyAPI) import and refresh", () => {
         expires_in: 3600,
       }),
     });
-    global.fetch = fetchMock;
+    vi.doMock("../../open-sse/utils/proxyFetch.js", () => ({
+      proxyAwareFetch: fetchMock,
+    }));
 
     const { refreshKiroToken } = await import("../../open-sse/services/tokenRefresh.js");
     const result = await refreshKiroToken("old-refresh-token", {
@@ -90,6 +92,20 @@ describe("Kiro external_idp (CLIProxyAPI) import and refresh", () => {
 
     expect(result).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when refresh transport fails", async () => {
+    vi.doMock("../../open-sse/utils/proxyFetch.js", () => ({
+      proxyAwareFetch: vi.fn().mockRejectedValue(new TypeError("fetch failed")),
+    }));
+
+    const { refreshKiroToken } = await import("../../open-sse/services/tokenRefresh.js");
+    await expect(refreshKiroToken("old-refresh-token", {
+      authMethod: "idc",
+      clientId: TEST_CLIENT_ID,
+      clientSecret: "client-secret",
+      region: "us-east-1",
+    })).resolves.toBeNull();
   });
 
   it("adds CodeWhisperer external IdP headers and endpoint ordering", async () => {

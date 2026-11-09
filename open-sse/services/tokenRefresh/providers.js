@@ -325,7 +325,8 @@ async function resolveKiroProfileArnPatch(providerSpecificData, accessToken, ref
 
 export async function refreshKiroToken(refreshToken, providerSpecificData, log, proxyOptions = null) {
   if (!refreshToken) return null;
-  return dedupRefresh("kiro", refreshToken, async () => {
+  try {
+    return await dedupRefresh("kiro", refreshToken, async () => {
   const authMethod = providerSpecificData?.authMethod;
   const clientId = providerSpecificData?.clientId;
   const clientSecret = providerSpecificData?.clientSecret;
@@ -452,7 +453,13 @@ export async function refreshKiroToken(refreshToken, providerSpecificData, log, 
     expiresIn: tokens.expiresIn,
     ...(await resolveKiroProfileArnPatch(providerSpecificData, tokens.accessToken, tokens.profileArn)),
   };
-  }, log);
+    }, log);
+  } catch (error) {
+    log?.error?.("TOKEN_REFRESH", "Kiro refresh transport failed", {
+      error: error?.message || String(error),
+    });
+    return null;
+  }
 }
 
 // iFlow: Basic Auth + client_id+client_secret in body. Delegate to refreshAccessToken("iflow", ...).
