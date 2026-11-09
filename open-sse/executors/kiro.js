@@ -14,7 +14,7 @@ import { AWS_EVENTSTREAM } from "../config/awsConstants.js";
 import { crc32, parseEventFrame } from "../utils/awsEventStream.js";
 
 const KIRO_REPAIR_BUFFER_MAX_BYTES = 8 * 1024 * 1024;
-// Regions per service host; a region outside the set is never spliced into the hostname.
+// Regions each Kiro service host answers in; never splice a region outside its set.
 const KIRO_SERVICE_REGIONS = {
   q: new Set(["us-east-1", "eu-central-1"]),
   runtime: new Set(["us-east-1", "eu-central-1"]),
@@ -309,7 +309,7 @@ export class KiroExecutor extends BaseExecutor {
     // Only a covered region reaches the hostname that receives the bearer token.
     const requestedRegion = (credentials?.providerSpecificData?.region || "us-east-1").trim();
     const regionalize = (u) => {
-      if (!u.includes("amazonaws.com")) return u;
+      if (!requestedRegion || !u.includes("amazonaws.com")) return u;
       const service = u.match(/\/\/([a-z]+)\.[a-z0-9-]+\.amazonaws\.com/)?.[1];
       const covered = KIRO_SERVICE_REGIONS[service];
       if (!covered || !covered.has(requestedRegion)) return u;
