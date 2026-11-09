@@ -270,8 +270,24 @@ const TLS_ECDH_CURVE = process.env.NINEROUTER_TLS_ECDH_CURVE || "X25519";
 // requestTls must stay TLS-options-only (undici 8 rejects connect-level options there
 // with UND_ERR_INVALID_ARG).
 const EYEBALLS_CONNECT = { autoSelectFamily: true, autoSelectFamilyAttemptTimeout: 250 };
-function buildConnectOptions(insecure) {
-  return { ...EYEBALLS_CONNECT, ecdhCurve: TLS_ECDH_CURVE, ...(insecure ? { rejectUnauthorized: false } : {}) };
+function isAwsEndpoint(targetUrl) {
+  try {
+    const hostname = new URL(targetUrl).hostname;
+    return hostname.endsWith(".amazonaws.com") || hostname.endsWith(".auth.desktop.kiro.dev");
+  } catch {
+    return false;
+  }
+}
+
+export function getTlsConnectOptions(targetUrl = "", insecure = false) {
+  return {
+    ...(isAwsEndpoint(targetUrl) ? {} : { ecdhCurve: TLS_ECDH_CURVE }),
+    ...(insecure ? { rejectUnauthorized: false } : {}),
+  };
+}
+
+function getDirectConnectOptions(targetUrl, insecure) {
+  return { ...EYEBALLS_CONNECT, ...getTlsConnectOptions(targetUrl, insecure) };
 }
 
 function evictOldest(cacheMap) {
@@ -280,13 +296,13 @@ function evictOldest(cacheMap) {
   }
 }
 
-async function getOrCreateDirectAgent(key, insecure, keepAliveTimeout, keepAliveMaxTimeout) {
+async function getOrCreateDirectAgent(key, targetUrl, insecure, keepAliveTimeout, keepAliveMaxTimeout) {
   const cached = directDispatchers.get(key);
   if (cached) return cached;
   const { Agent } = await import("undici");
   evictOldest(directDispatchers);
   const agent = new Agent({
-    connect: buildConnectOptions(insecure),
+    connect: getDirectConnectOptions(targetUrl, insecure),
     keepAliveTimeout,
     keepAliveMaxTimeout,
   });
@@ -299,20 +315,23 @@ async function getOrCreateDirectAgent(key, insecure, keepAliveTimeout, keepAlive
  * reusing idle sockets that upstream edges (NVIDIA NIM, Cloudflare) silently
  * dropped without sending a TCP RST.
  */
-export function getDirectDispatcher(insecure = false) {
+export function getDirectDispatcher(insecure = false, targetUrl = "") {
   const { keepAliveTimeout, keepAliveMaxTimeout } = resolveKeepAliveTimeouts();
-  const key = `direct::${insecure ? "insecure" : "secure"}::${keepAliveTimeout}::${keepAliveMaxTimeout}`;
-  return getOrCreateDirectAgent(key, insecure, keepAliveTimeout, keepAliveMaxTimeout);
+  const tlsMode = isAwsEndpoint(targetUrl) ? "aws" : "default";
+  const key = `direct::${tlsMode}::${insecure ? "insecure" : "secure"}::${keepAliveTimeout}::${keepAliveMaxTimeout}`;
+  return getOrCreateDirectAgent(key, targetUrl, insecure, keepAliveTimeout, keepAliveMaxTimeout);
 }
 
 /**
  * No-keep-alive retry dispatcher (`keepAliveTimeout: 1ms`) — guarantees a fresh
  * TCP/TLS connection after a poisoned pooled socket or a connect timeout.
  */
-export function getFreshRetryDispatcher(insecure = false) {
-  const key = `fresh::${insecure ? "insecure" : "secure"}`;
+export function getFreshRetryDispatcher(insecure = false, targetUrl = "") {
+  const tlsMode = isAwsEndpoint(targetUrl) ? "aws" : "default";
+  const key = `fresh::${tlsMode}::${insecure ? "insecure" : "secure"}`;
   return getOrCreateDirectAgent(
     key,
+    targetUrl,
     insecure,
     FRESH_RETRY_KEEPALIVE_TIMEOUT_MS,
     FRESH_RETRY_KEEPALIVE_TIMEOUT_MS
@@ -324,13 +343,16 @@ export function getFreshRetryDispatcher(insecure = false) {
  * Always returns a dispatcher — the direct path needs the custom Agent too,
  * otherwise the default global agent's ClientHello gets RST-ed by DPI.
  */
-async function getDispatcher(proxyUrl, insecure = false, forceFreshSocket = false) {
+async function getDispatcher(proxyUrl, targetUrl, insecure = false, forceFreshSocket = false) {
   const normalized = normalizeProxyUrl(proxyUrl);
   if (!normalized) {
-    return forceFreshSocket ? getFreshRetryDispatcher(insecure) : getDirectDispatcher(insecure);
+    return forceFreshSocket
+      ? getFreshRetryDispatcher(insecure, targetUrl)
+      : getDirectDispatcher(insecure, targetUrl);
   }
 
-  const key = `${normalized}::${insecure ? "insecure" : "secure"}`;
+  const tlsMode = isAwsEndpoint(targetUrl) ? "aws" : "default";
+  const key = `${normalized}::${tlsMode}::${insecure ? "insecure" : "secure"}`;
   if (!proxyDispatchers.has(key)) {
     // Evict oldest entry if max size reached
     if (proxyDispatchers.size >= MEMORY_CONFIG.proxyDispatchersMaxSize) {
@@ -340,7 +362,7 @@ async function getDispatcher(proxyUrl, insecure = false, forceFreshSocket = fals
     const dispatcher = new ProxyAgent({
       uri: normalized,
       connect: EYEBALLS_CONNECT,
-      requestTls: { ecdhCurve: TLS_ECDH_CURVE, ...(insecure ? { rejectUnauthorized: false } : {}) },
+      requestTls: getTlsConnectOptions(targetUrl, insecure),
     });
     proxyDispatchers.set(key, dispatcher);
   }
@@ -357,7 +379,7 @@ async function fetchWithTlsFallback(url, options, proxyUrl, forceFreshSocket = f
     // Protocol adapters may need Node's HTTP/1 transport on the direct path.
     // Keep proxy/no-proxy resolution and strict-proxy enforcement here.
     if (!proxyUrl && options.directFetch) return await options.directFetch(url, options);
-    const dispatcher = await getDispatcher(proxyUrl, false, forceFreshSocket);
+    const dispatcher = await getDispatcher(proxyUrl, url, false, forceFreshSocket);
     return await rawFetch(url, { ...options, dispatcher });
   } catch (err) {
     const isStrictSsl = options.strictTls === true || process.env.STRICT_SSL === "true" || process.env.STRICT_SSL === "1";
@@ -367,7 +389,7 @@ async function fetchWithTlsFallback(url, options, proxyUrl, forceFreshSocket = f
       }
       // ponytail: in-memory insecure agent fallback for self-signed MITM corporate/antivirus certs
       console.warn(`[ProxyFetch] TLS cert verification failed (${err.cause?.code || err.code}), retrying with insecure TLS: ${url}`);
-      const insecureDispatcher = await getDispatcher(proxyUrl, true, forceFreshSocket);
+      const insecureDispatcher = await getDispatcher(proxyUrl, url, true, forceFreshSocket);
       return await rawFetch(url, { ...options, dispatcher: insecureDispatcher });
     }
 

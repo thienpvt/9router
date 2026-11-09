@@ -36,6 +36,14 @@ describe("undici keep-alive dead-socket protection & fresh-socket retry", () => 
     });
   });
 
+  it("uses default TLS negotiation for AWS endpoints but X25519 for DPI-sensitive endpoints", async () => {
+    const { getTlsConnectOptions } = await import("../../open-sse/utils/proxyFetch.js");
+
+    expect(getTlsConnectOptions("https://oidc.ap-southeast-1.amazonaws.com")).not.toHaveProperty("ecdhCurve");
+    expect(getTlsConnectOptions("https://prod.us-east-1.auth.desktop.kiro.dev")).not.toHaveProperty("ecdhCurve");
+    expect(getTlsConnectOptions("https://api.anthropic.com").ecdhCurve).toBe("X25519");
+  });
+
   it("creates distinct shared direct and fresh-retry dispatchers", async () => {
     const {
       getDirectDispatcher,
@@ -44,10 +52,10 @@ describe("undici keep-alive dead-socket protection & fresh-socket retry", () => 
     } = await import("../../open-sse/utils/proxyFetch.js");
     resetDirectDispatchersForTests();
 
-    const direct1 = await getDirectDispatcher(false);
-    const direct2 = await getDirectDispatcher(false);
-    const fresh1 = await getFreshRetryDispatcher(false);
-    const fresh2 = await getFreshRetryDispatcher(false);
+    const direct1 = await getDirectDispatcher(false, "https://integrate.api.nvidia.com");
+    const direct2 = await getDirectDispatcher(false, "https://integrate.api.nvidia.com");
+    const fresh1 = await getFreshRetryDispatcher(false, "https://integrate.api.nvidia.com");
+    const fresh2 = await getFreshRetryDispatcher(false, "https://integrate.api.nvidia.com");
 
     expect(direct1).not.toBeNull();
     expect(direct1).toBe(direct2);
@@ -102,8 +110,8 @@ describe("undici keep-alive dead-socket protection & fresh-socket retry", () => 
     expect(res.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledTimes(2);
 
-    const directDispatcher = await getDirectDispatcher(false);
-    const freshDispatcher = await getFreshRetryDispatcher(false);
+    const directDispatcher = await getDirectDispatcher(false, "https://integrate.api.nvidia.com/v1/chat/completions");
+    const freshDispatcher = await getFreshRetryDispatcher(false, "https://integrate.api.nvidia.com/v1/chat/completions");
 
     expect(fetchMock.mock.calls[0][1].dispatcher).toBe(directDispatcher);
     expect(fetchMock.mock.calls[1][1].dispatcher).toBe(freshDispatcher);
@@ -189,7 +197,7 @@ describe("undici keep-alive dead-socket protection & fresh-socket retry", () => 
       { forceFreshSocket: true }
     );
 
-    const freshDispatcher = await getFreshRetryDispatcher(false);
+    const freshDispatcher = await getFreshRetryDispatcher(false, "https://integrate.api.nvidia.com/v1/chat/completions");
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][1].dispatcher).toBe(freshDispatcher);
   });
