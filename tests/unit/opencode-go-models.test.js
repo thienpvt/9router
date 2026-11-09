@@ -156,9 +156,9 @@ describe("OpenCode Go multi-endpoint transports", () => {
   });
 
   it("resolveTransport picks the endpoint matching the client sourceFormat", () => {
-    expect(resolveTransport("opencode-go", "claude").baseUrl).toBe("https://opencode.ai/zen/go/v1/messages");
-    expect(resolveTransport("opencode-go", "openai-responses").baseUrl).toBe("https://opencode.ai/zen/go/v1/responses");
-    expect(resolveTransport("opencode-go", "openai").baseUrl).toBe("https://opencode.ai/zen/go/v1/chat/completions");
+    expect(resolveTransport("opencode-go", "claude").baseUrl).toBe("https://opencode.ai/inference/go/anthropic/v1/messages");
+    expect(resolveTransport("opencode-go", "openai-responses").baseUrl).toBe("https://opencode.ai/inference/go/openai/v1/responses");
+    expect(resolveTransport("opencode-go", "openai").baseUrl).toBe("https://opencode.ai/inference/go/openai/v1/chat/completions");
   });
 
   it("uses x-api-key + anthropicVersion on the claude transport", () => {
@@ -171,7 +171,7 @@ describe("OpenCode Go multi-endpoint transports", () => {
 describe("OpenCode Go per-model transport guard (chatCore logic)", () => {
   it("routes /messages-family models + claude-format client to /messages", () => {
     for (const m of CLAUDE_CAPABLE) {
-      expect(pickTransport("opencode-go", "claude", "opencode-go", m)?.baseUrl).toBe("https://opencode.ai/zen/go/v1/messages");
+      expect(pickTransport("opencode-go", "claude", "opencode-go", m)?.baseUrl).toBe("https://opencode.ai/inference/go/anthropic/v1/messages");
     }
   });
 
@@ -183,13 +183,13 @@ describe("OpenCode Go per-model transport guard (chatCore logic)", () => {
 
   it("pins /messages-only models to /messages for the claude wire", () => {
     for (const m of CLAUDE_ONLY) {
-      expect(pickTransport("opencode-go", "claude", "opencode-go", m)?.baseUrl).toBe("https://opencode.ai/zen/go/v1/messages");
+      expect(pickTransport("opencode-go", "claude", "opencode-go", m)?.baseUrl).toBe("https://opencode.ai/inference/go/anthropic/v1/messages");
     }
   });
 
   it("routes responses-family + responses-format client to /responses", () => {
     for (const m of RESPONSES_CAPABLE) {
-      expect(pickTransport("opencode-go", "openai-responses", "opencode-go", m)?.baseUrl).toBe("https://opencode.ai/zen/go/v1/responses");
+      expect(pickTransport("opencode-go", "openai-responses", "opencode-go", m)?.baseUrl).toBe("https://opencode.ai/inference/go/openai/v1/responses");
     }
   });
 
@@ -202,7 +202,8 @@ describe("OpenCode Go per-model transport guard (chatCore logic)", () => {
 
   it("routes responses-only models to /responses, never to /messages or /chat/completions", () => {
     for (const m of RESPONSES_CAPABLE) {
-      expect(pickTransport("opencode-go", "openai-responses", "opencode-go", m)?.baseUrl).toBe("https://opencode.ai/zen/go/v1/responses");
+      expect(getModelSupportedFormats("opencode-go", m)).toEqual(["openai-responses"]);
+      expect(pickTransport("opencode-go", "openai-responses", "opencode-go", m)?.baseUrl).toBe("https://opencode.ai/inference/go/openai/v1/responses");
       expect(pickTransport("opencode-go", "claude", "opencode-go", m)).toBeNull();
       expect(pickTransport("opencode-go", "openai", "opencode-go", m)).toBeNull();
     }
@@ -216,7 +217,7 @@ describe("OpenCode Go per-model transport guard (chatCore logic)", () => {
 
   it("routes DeepSeek V4.1 Flash to /chat/completions for OpenAI clients, and never to /messages or /responses", () => {
     expect(pickTransport("opencode-go", "openai", "opencode-go", "deepseek-v4.1-flash")?.baseUrl).toBe(
-      "https://opencode.ai/zen/go/v1/chat/completions"
+      "https://opencode.ai/inference/go/openai/v1/chat/completions"
     );
     expect(pickTransport("opencode-go", "claude", "opencode-go", "deepseek-v4.1-flash")).toBeNull();
     expect(pickTransport("opencode-go", "openai-responses", "opencode-go", "deepseek-v4.1-flash")).toBeNull();
@@ -295,7 +296,7 @@ describe("handler fallback", () => {
       expect(capturedArgs.credentials?.runtimeTransport).toBeUndefined();
       expect(Array.isArray(capturedArgs.body.messages)).toBe(true);
       expect(capturedArgs.body.messages[0]).toMatchObject({ role: "user", content: "hello" });
-      expect(resolvedUrl).toBe("https://opencode.ai/zen/go/v1/chat/completions");
+      expect(resolvedUrl).toBe("https://opencode.ai/inference/go/openai/v1/chat/completions");
       expect(result.success).toBe(true);
       expect(result.response.status).toBe(200);
     }
@@ -308,7 +309,7 @@ describe("synthetic absent model compatibility boundaries", () => {
     (format) => {
       expect(getModelSupportedFormats("opencode-go", SYNTHETIC_UNKNOWN)).toEqual(["openai"]);
       expect(pickTransport("opencode-go", format, "opencode-go", SYNTHETIC_UNKNOWN)?.baseUrl ?? null).toBe(
-        format === "openai" ? "https://opencode.ai/zen/go/v1/chat/completions" : null
+        format === "openai" ? "https://opencode.ai/inference/go/openai/v1/chat/completions" : null
       );
       expect(getModelTargetFormat("opencode-go", SYNTHETIC_UNKNOWN)).toBeNull();
       expect(getTargetFormat("opencode-go")).toBe("openai");
@@ -338,7 +339,7 @@ describe("declared-open and empty-format catalog entries", () => {
       expect(isValidModel("opencode-go", fixtureId)).toBe(true);
       expect(getModelSupportedFormats("opencode-go", fixtureId)).toBeNull();
       expect(pickTransport("opencode-go", "claude", "opencode-go", fixtureId)?.baseUrl).toBe(
-        "https://opencode.ai/zen/go/v1/messages"
+        "https://opencode.ai/inference/go/anthropic/v1/messages"
       );
 
       const executor = getExecutor("opencode-go");
@@ -396,8 +397,8 @@ describe("declared-open and empty-format catalog entries", () => {
       });
 
       expect(capturedArgs).not.toBeNull();
-      expect(capturedArgs.credentials?.runtimeTransport?.baseUrl).toBe("https://opencode.ai/zen/go/v1/messages");
-      expect(resolvedUrl).toBe("https://opencode.ai/zen/go/v1/messages");
+      expect(capturedArgs.credentials?.runtimeTransport?.baseUrl).toBe("https://opencode.ai/inference/go/anthropic/v1/messages");
+      expect(resolvedUrl).toBe("https://opencode.ai/inference/go/anthropic/v1/messages");
       expect(result.success).toBe(true);
       expect(result.response.status).toBe(200);
     } finally {

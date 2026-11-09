@@ -16,6 +16,7 @@
 # next.js
 /.next/
 /.next-cli-build/
+/.next-router9-*/
 /out/
 cli/.build-home/
 product
