@@ -1,12 +1,8 @@
-# Unreleased
+# v0.5.119 (2026-11-18)
 
 ## Features
 - **Codex**: add `gpt-6.2-sol` and `gpt-6.2-astra` with Responses Lite transport, `ultra` reasoning and `[1m]` context variants, matching openai/codex models.json
 - **Capabilities**: publish 872k context for the GPT-6 family (upstream `max_context_window`)
-
-# v0.5.119 (2026-11-11)
-
-## Features
 - **Synthetic**: add Synthetic (`syn`) — OpenAI-compatible upstream on `api.synthetic.new` with the always-on `hf:` models as a static fallback, model passthrough, live model discovery, and a usage tracker reading `GET /v2/quotas`
 - **Claude**: add Claude Fable 5.2 ($8/$40) as the Fable flagship and `claude-haiku-5-5` ($0.10/$0.50, 1M/128K); the advertised Claude Code version now auto-tracks the latest npm release (floor 2.1.322, pin with `CLAUDE_CLI_VERSION`), and the dashboard lists live models through the OAuth bearer
 - **Antigravity**: add Gemini 4 Carbon in low/medium/high tiers plus a bare alias resolving to medium, and track the tiers in the usage quota list
