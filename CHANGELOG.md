@@ -1,3 +1,10 @@
+# Unreleased
+
+## Features
+- **Codex**: add `gpt-6.2-sol` and `gpt-6.2-astra` with Responses Lite transport, `ultra` reasoning and `[1m]` context variants, matching openai/codex models.json
+- **Capabilities**: publish 872k context for the GPT-6 family (upstream `max_context_window`)
+- **Codex**: bump CLI identity headers to 0.166.0 (minimum required by the 6.2 models)
+
 # v0.5.116 (2026-11-08)
 
 ## Features
