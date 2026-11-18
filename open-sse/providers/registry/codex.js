@@ -2,8 +2,7 @@ import { withCodexReviewModels } from "../models/helpers.js";
 
 // Codex CLI version seen by OpenAI's backend — single source for the Version /
 // User-Agent identity headers. Bump when the installed codex CLI is upgraded.
-// gpt-6.2-* require Codex CLI >= 0.166.0 (codex-rs/models-manager/models.json).
-const CODEX_CLI_VERSION = "0.166.0";
+const CODEX_CLI_VERSION = "0.167.1";
 const GPT_6_LITE_THINKING_LEVELS = ["low", "medium", "high", "xhigh", "max"];
 const GPT_6_2_THINKING_LEVELS = [...GPT_6_LITE_THINKING_LEVELS, "ultra"];
 
