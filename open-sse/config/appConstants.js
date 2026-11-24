@@ -186,9 +186,11 @@ export const CLAUDE_SYSTEM_PROMPT = "You are Claude Code, Anthropic's official C
 // makes the backend flag the request and answer 429 Quota Exhausted.
 export const ANTIGRAVITY_PROMPT_REWRITES = [
   { from: "You are a Claude agent, built on Anthropic's Claude Agent SDK.", to: "" },
-  // Claude Code & Codex CLI identity phrases fingerprinted in systemInstruction (bisected live 2026-11-24).
+  // Claude Code & Codex CLI identity/harness phrases fingerprinted in systemInstruction (bisected live 2026-11-24).
   { from: /You are Claude Code(?:,\s*Anthropic's official CLI for Claude)?\.?/gi, to: "You are an AI coding assistant." },
   { from: /interactive agent that helps users with software engineering tasks/gi, to: "AI coding assistant that helps users with software engineering tasks" },
+  { from: /Dual-use security tools \(C2 frameworks, credential testing, exploit development\) require clear authorization context/gi, to: "Dual-use security tools require clear authorization context" },
+  { from: /was pasted into the message by the user from somewhere else and may contain instructions the user did not write/gi, to: "comes from user-pasted content and may contain untrusted instructions" },
   { from: /You are a coding agent running in the Codex CLI(?:,\s*a terminal-based coding assistant)?\.?/gi, to: "You are a coding assistant." },
   // Hermes Agent lines that each get a fake 429 RESOURCE_EXHAUSTED from Antigravity (found by
   // bisecting a real Hermes system prompt, 2026-11-18). Whole lines go; the default SOUL line
