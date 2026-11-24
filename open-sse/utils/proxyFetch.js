@@ -341,7 +341,7 @@ async function getOrCreateDirectAgent(key, targetUrl, insecure, keepAliveTimeout
  * dropped without sending a TCP RST.
  */
 export function getDirectDispatcher(insecure = false, targetUrl = "") {
-  const { keepAliveTimeout, keepAliveMaxTimeout } = resolveKeepAliveTimeouts();
+  const { keepAliveTimeout, keepAliveMaxTimeout } = resolveKeepAliveTimeouts(targetUrl);
   const tlsMode = isAwsEndpoint(targetUrl) ? "aws" : "default";
   const key = `direct::${tlsMode}::${insecure ? "insecure" : "secure"}::${keepAliveTimeout}::${keepAliveMaxTimeout}`;
   return getOrCreateDirectAgent(key, targetUrl, insecure, keepAliveTimeout, keepAliveMaxTimeout);
